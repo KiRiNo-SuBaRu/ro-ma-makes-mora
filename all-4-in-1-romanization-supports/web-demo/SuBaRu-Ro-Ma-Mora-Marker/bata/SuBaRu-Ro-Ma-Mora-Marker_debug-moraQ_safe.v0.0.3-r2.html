@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SuBaRu-Ro-Ma-Mora-Marker debug minimal (mora Q, safe)</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f6f4ef;
+      --panel: #fffdfa;
+      --line: #d8d2c8;
+      --text: #22201b;
+      --muted: #6b655d;
+      --accent: #0f6d72;
+      --bad: #9f2454;
+      --good: #2d6a1f;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #181714;
+        --panel: #22201d;
+        --line: #423d37;
+        --text: #ece7de;
+        --muted: #aea79c;
+        --accent: #6bc0c8;
+        --bad: #f06aa6;
+        --good: #9cd67d;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    .wrap {
+      width: min(960px, calc(100% - 32px));
+      margin: 24px auto 48px;
+    }
+    h1, h2 { margin: 0 0 12px; }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    textarea, input {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px;
+      background: transparent;
+      color: var(--text);
+      font: inherit;
+    }
+    .row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+    button {
+      border: 1px solid var(--line);
+      background: var(--accent);
+      color: white;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font: inherit;
+      cursor: pointer;
+    }
+    button.sub {
+      background: transparent;
+      color: var(--text);
+    }
+    pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 14px;
+    }
+    #output {
+      font-size: 28px;
+      line-height: 1.3;
+      letter-spacing: 0.03em;
+    }
+    .muted { color: var(--muted); }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip {
+      border: 1px solid var(--line);
+      background: transparent;
+      border-radius: 999px;
+      padding: 6px 10px;
+      cursor: pointer;
+      color: var(--text);
+    }
+    .ok { color: var(--good); }
+    .ng { color: var(--bad); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    th, td {
+      border-top: 1px solid var(--line);
+      padding: 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="panel">
+      <h1>SuBaRu-Ro-Ma-Mora-Marker debug minimal (mora Q)</h1>
+      <p class="muted">Q 系をモーラ単位で扱う修正版です。tokens / moras / output の三段ログを確認できます。</p>
+    </section>
+
+    <section class="panel">
+      <h2>入力</h2>
+      <textarea id="input" rows="4">gakkou</textarea>
+      <div class="row">
+        <button id="run">変換</button>
+        <button id="clear" class="sub">ログ消去</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>結果</h2>
+      <pre id="output"></pre>
+    </section>
+
+    <section class="panel">
+      <h2>ログ</h2>
+      <pre id="log"></pre>
+    </section>
+
+    <section class="panel">
+      <h2>固定テスト</h2>
+      <div class="chips" id="cases"></div>
+      <div class="row" style="margin-top:16px;">
+        <button id="runTests" class="sub">一覧実行</button>
+      </div>
+      <div style="margin-top:12px; overflow:auto;">
+        <table>
+          <thead>
+            <tr><th>入力</th><th>期待</th><th>実際</th><th>状態</th></tr>
+          </thead>
+          <tbody id="testBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    var testCases = [
+      ["gakkou", "GakKoU"],
+      ["toppu", "TopPu"],
+      ["kitte", "KitTe"],
+      ["kitteiru", "KitTeIRu"],
+      ["gyoukai", "GyoUKaI"],
+      ["gyo", "Gyo"],
+      ["kaihatu", "KaIHaTu"],
+      ["seisyohou", "SeISyoHoU"],
+      ["yasai", "YaSaI"],
+      ["siteori", "SiTeORi"],
+      ["osaete", "OSaETe"],
+      ["tou", "ToU"],
+      ["toukyou", "ToUKyoU"],
+      ["suu", "Suu"],
+      ["oi", "Oi"],
+      ["boat", "boat"],
+      ["coat", "coat"],
+      ["head", "head"],
+      ["piano", "piano"]
+    ];
+
+    var vowels = { a: true, i: true, u: true, e: true, o: true };
+    var latinWords = { boat: true, coat: true, head: true, piano: true };
+    var output = document.getElementById("output");
+    var log = document.getElementById("log");
+    var input = document.getElementById("input");
+    var body = document.getElementById("testBody");
+    var cases = document.getElementById("cases");
+
+    function appendLog(line) {
+    	log.textContent += (log.textContent ? "\n" : "") + line;
+    }
+
+    function isVowel(ch) {
+      return !!vowels[ch];
+    }
+
+    function splitWords(text) {
+      return text.split(/(\s+)/).filter(function (v) { return v.length > 0; });
+    }
+
+    function classifyWord(word) {
+      var lower = word.toLowerCase();
+      if (latinWords[lower]) return "LATIN_WORD";
+      if (/[^a-z]/i.test(word)) return "UNKNOWN";
+      if (/(oa|ea|ia)/.test(lower)) return "LATIN_WORD";
+      if (/(tsu|shi|kyo|gyo|tou|kai|gak|syo)/.test(lower)) return "JP_ROMAJI";
+      if (/[aeiou]/.test(lower)) return "JP_ROMAJI";
+      return "UNKNOWN";
+    }
+
+    function tokenizeJP(word) {
+      var s = word.toLowerCase();
+      var tokens = [];
+      var i = 0;
+      while (i < s.length) {
+        var c = s[i];
+        var n = s[i + 1] || "";
+        var nn = s[i + 2] || "";
+
+        if (i + 1 < s.length && c === n && !isVowel(c) && c !== "n") {
+          tokens.push({ type: "Q", raw: c });
+          i += 1;
+          continue;
+        }
+
+        if (c === "n") {
+          if (!n) {
+            tokens.push({ type: "N", raw: "n" });
+            i += 1;
+            continue;
+          }
+          if (n === "y") {
+          } else if (!isVowel(n)) {
+            tokens.push({ type: "N", raw: "n" });
+            i += 1;
+            continue;
+          }
+        }
+
+        if (isVowel(c)) {
+          tokens.push({ type: "V", raw: c });
+          i += 1;
+          continue;
+        }
+
+        if (n === "y" && isVowel(nn)) {
+          tokens.push({ type: "CyV", raw: c + n + nn });
+          i += 3;
+          continue;
+        }
+
+        if (isVowel(n)) {
+          tokens.push({ type: "CV", raw: c + n });
+          i += 2;
+          continue;
+        }
+
+        tokens.push({ type: "C?", raw: c });
+        i += 1;
+      }
+      return tokens;
+    }
+
+    function buildMoras(tokens) {
+      var moras = [];
+      for (var i = 0; i < tokens.length; i += 1) {
+        var t = tokens[i];
+        var n = tokens[i + 1];
+
+        if (t.type === "Q" && n && (n.type === "CV" || n.type === "CyV")) {
+          moras.push({
+            kind: n.type === "CV" ? "QCV" : "QCyV",
+            raw: t.raw + n.raw,
+            tokens: [t, n]
+          });
+          i += 1;
+          continue;
+        }
+
+        moras.push({ kind: t.type, raw: t.raw, tokens: [t] });
+      }
+      return moras;
+    }
+
+    function displayMoras(moras) {
+      var out = [];
+      for (var i = 0; i < moras.length; i += 1) {
+        var m = moras[i];
+        var isLast = i === moras.length - 1;
+
+        if (m.kind === "CV") {
+          var c = m.raw[0] || "";
+          var v = m.raw[1] || "";
+          out.push(c.toUpperCase() + v);
+          continue;
+        }
+
+        if (m.kind === "QCV") {
+          var r = m.raw;
+          var c1 = r[0] || "";
+          var c2 = r[1] || "";
+          var vv  = r[2] || "";
+          var visual = c1 + c2.toUpperCase() + vv; // tTe, pPu, kKo
+          out.push(visual);
+          continue;
+        }
+
+        if (m.kind === "V") {
+          var mv = m.raw;
+          out.push(isLast ? mv.toUpperCase() : mv);
+          continue;
+        }
+
+        if (m.kind === "N") {
+          out.push("N");
+          continue;
+        }
+
+        if (m.kind === "CyV") {
+          var cc = m.raw[0] || "";
+          var rest = m.raw.slice(1);
+          out.push(cc.toUpperCase() + rest);
+          continue;
+        }
+
+        var c0 = m.raw[0] || "";
+        out.push(c0.toUpperCase() + m.raw.slice(1));
+      }
+      return out.join("");
+    }
+
+    function convertWord(word) {
+      var type = classifyWord(word);
+      if (type !== "JP_ROMAJI") {
+        return { type: type, tokens: [], moras: [], result: word };
+      }
+      var tokens = tokenizeJP(word);
+      var moras = buildMoras(tokens);
+      var result = displayMoras(moras);
+      return { type: type, tokens: tokens, moras: moras, result: result };
+    }
+
+    function convertText(text) {
+      var parts = splitWords(text);
+      var lines = [];
+      var results = parts.map(function (part) {
+        if (part.trim() === "") return part;
+        var info = convertWord(part);
+        if (info.type === "JP_ROMAJI") {
+          var tokenStr = (info.tokens || []).map(function (t) { return t.type + ":" + t.raw; }).join(" | ");
+          var moraStr = (info.moras || []).map(function (m) { return m.kind + ":" + m.raw; }).join(" | ");
+          lines.push(part);
+          lines.push("  tokens: " + tokenStr);
+          lines.push("  moras : " + moraStr);
+          lines.push("  output: " + info.result);
+        } else {
+          lines.push(part + " (type=" + info.type + ")");
+        }
+        return info.result;
+      });
+      return { text: results.join(""), logs: lines };
+    }
+
+    function runOne() {
+      var res = convertText(input.value);
+      output.textContent = res.text;
+      var joined = res.logs.join("\n");
+      appendLog(joined);
+    }
+
+    function renderCases() {
+      testCases.forEach(function (tc) {
+        var src = tc[0];
+        var b = document.createElement("button");
+        b.className = "chip";
+        b.type = "button";
+        b.textContent = src;
+        b.addEventListener("click", function () {
+          input.value = src;
+          runOne();
+        });
+        cases.appendChild(b);
+      });
+    }
+
+    function runTests() {
+      body.innerHTML = "";
+      testCases.forEach(function (tc) {
+        var src = tc[0];
+        var expected = tc[1];
+        var resultObj = convertText(src);
+        var result = resultObj.text;
+        var tr = document.createElement("tr");
+        var ok = result === expected;
+        tr.innerHTML = "<td>" + src + "</td>" +
+                       "<td>" + expected + "</td>" +
+                       "<td>" + result + "</td>" +
+                       "<td class="" + (ok ? "ok" : "ng") + "">" + (ok ? "PASS" : "FAIL") + "</td>";
+        body.appendChild(tr);
+      });
+    }
+
+    document.getElementById("run").addEventListener("click", runOne);
+    document.getElementById("clear").addEventListener("click", function () { log.textContent = ""; });
+    document.getElementById("runTests").addEventListener("click", runTests);
+    renderCases();
+    runOne();
+  </script>
+</body>
+</html>

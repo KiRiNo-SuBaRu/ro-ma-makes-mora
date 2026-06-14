@@ -23,6 +23,9 @@
 | toukyou | JP_ROMAJI | CV:to, V:u, CyV:kyo, V:u | CV:to, V:u, CyV:kyo, V:u | ToUKyoU |
 | yasai | JP_ROMAJI | CV:ya, CV:sa, V:i | CV:ya, CV:sa, V:i | YaSaI |
 | seisyohou | JP_ROMAJI | CV:se, V:i, CyV:syo, CV:ho, V:u | CV:se, V:i, CyV:syo, CV:ho, V:u | SeISyoHoU |
+| seikou | JP_ROMAJI | CV:se, V:i, CV:ko, V:u | CV:se, V:i, CV:ko, V:u | SeIKoU |
+| keiei | JP_ROMAJI | CV:ke, V:i, V:e, V:i | CV:ke, V:i, V:e, V:i | KeIEI |
+| seion | JP_ROMAJI | CV:se, V:i, V:o, N | CV:se, V:i, V:o, N | SeIOn |
 | siteori | JP_ROMAJI | CV:si, CV:te, V:o, CV:ri | CV:si, CV:te, V:o, CV:ri | SiTeORi |
 | osaete | JP_ROMAJI | V:o, CV:sa, V:e, CV:te | V:o, CV:sa, V:e, CV:te | OSaETe |
 
@@ -56,7 +59,7 @@ result は現行の `displayMoras` 実装に従うため、方向性だけ記載
 「全代表語まとめセット」ボタンで、入力エリアに次の 4 行が入る想定です。
 
 1. `gakkou toppu kitte kitteiru`
-2. `suu oi tou toukyou yasai seisyohou siteori osaete`
+2. `suu oi tou toukyou yasai seisyohou seikou keiei seion siteori osaete`
 3. `sinya kinyoubi`
 4. `nyanko nyuugaku nyoro ginyaku`
 
@@ -64,7 +67,7 @@ result は現行の `displayMoras` 実装に従うため、方向性だけ記載
 
 ## 2. V 系回帰テスト表（V 例外＋関連語）
 
-V モーラ例外を実装・変更するときに**必ず通すべきセット**です。
+V モーラ例外を実装・変更するときに必ず通すべきセットです。
 
 ### 2.1 kitteiru 系（ei 系／促音＋V）
 
@@ -74,11 +77,14 @@ V モーラ例外を実装・変更するときに**必ず通すべきセット*
 
 ---
 
-### 2.2 seisyohou 系（ei 系）
+### 2.2 e + i 系一般化セット
 
 | input | 想定モーラ列（概念） | V 例外が効くモーラ | 期待される result |
 | :-- | :-- | :-- | :-- |
 | seisyohou | CV:se / V:i / CyV:syo / CV:ho / V:u | `V:i`（se の後） | SeISyoHoU |
+| seikou | CV:se / V:i / CV:ko / V:u | `V:i`（se の後） | SeIKoU |
+| keiei | CV:ke / V:i / V:e / V:i | 1 個目の `V:i`（ke の後） | KeIEI |
+| seion | CV:se / V:i / V:o / N | `V:i`（se の後） | SeIOn |
 
 ---
 
@@ -128,8 +134,16 @@ V モーラ例外を実装・変更するときに**必ず通すべきセット*
 ## 3. 回帰テスト時のチェック手順メモ
 
 1. 「全代表語まとめセット」ボタンを押して、4 行すべてを一度に変換する。
-2. 各行について、`tokens / moras / result` が上記表の「期待される result」と一致するかを確認する。
+2. 各行について、`tokens / moras / result` が上記表の
+   「期待される result」と一致するかを確認する。
 3. 特に下記を重点チェックする。
-    - `oi / sinya / kinyoubi` → `convertWord` の単語例外が効いているか。
-    - `suu / tou / toukyou / siteori / osaete / sieawo` → V モーラの大文字化・小文字化が崩れていないか。
-    - ny 監視セット（`nyanko / nyuugaku / nyoro / ginyaku`）が「通常処理のまま」であり、新しい V 例外や ny 関連の変更の副作用を受けていないか。
+   - `oi / sinya / kinyoubi` → `convertWord` の単語例外が
+     効いているか。
+   - `suu / tou / toukyou / seisyohou / seikou / keiei / seion /
+     siteori / osaete / sieawo` → V モーラの大文字化・
+     小文字化が崩れていないか。
+   - `seion` → `e + i` 系一般化と撥音表記 `'n` の両方が
+     同時に崩れていないか。
+   - ny 監視セット（`nyanko / nyuugaku / nyoro / ginyaku`）が
+     「通常処理のまま」であり、新しい V 例外や ny 関連の変更の
+     副作用を受けていないか。

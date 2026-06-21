@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>SuBaRu-Ro-Ma-Mora-Marker debug SieAWo v1.2.5-r1</title>
+  <style>
+    body { font-family: monospace; padding: 1em; }
+    #result { font-size: 2em; margin: 0.5em 0; letter-spacing: 0.05em; }
+    #log { white-space: pre; font-size: 0.85em; background: #f5f5f5;
+      padding: 0.8em; border: 1px solid #ccc; margin-top: 1em; }
+    table { border-collapse: collapse; margin-top: 1em; width: 100%; }
+    th, td { border: 1px solid #bbb; padding: 0.3em 0.6em; text-align: left; }
+    th { background: #eee; }
+    .chip { display: inline-block; margin: 0.2em; padding: 0.2em 0.5em;
+      background: #ddf; border-radius: 4px; cursor: pointer; }
+  </style>
+</head>
+<body>
+<h2>SuBaRu-Ro-Ma-Mora-Marker debug SieAWo v1.2.5-r1</h2>
+<p>
+  required / observe / latin-word / context-no 再編後の確認版。
+</p>
+<textarea id="inp" rows="3" cols="40"
+  placeholder="例: gakkou kitte toukyou"></textarea><br>
+<button onclick="run()">変換</button>
+
+<div id="result"></div>
+<pre id="log"></pre>
+
+<h3>固定テスト（required）</h3>
+<p>
+  標準モードで期待値を固定し、PASS / NG を確認する代表語セット。
+</p>
+<div id="chips"></div>
+<table id="tbl">
+  <thead>
+    <tr>
+      <th>input</th><th>tokens</th><th>moras</th><th>output</th>
+      <th>expect</th><th>pass?</th>
+    </tr>
+  </thead>
+  <tbody id="tbody"></tbody>
+</table>
+
+<h3>観察用ケース（observe / latin-word / context-no）</h3>
+<p>
+  揺れ監視語、英単語非装飾、no 文脈補正の確認用。ここは原則として観察重視。
+</p>
+<div id="observeChips"></div>
+<table id="observeTbl">
+  <thead>
+    <tr>
+      <th>input</th>
+      <th>tokens</th>
+      <th>moras</th>
+      <th>output</th>
+      <th>note / kind</th>
+    </tr>
+  </thead>
+  <tbody id="observeTbody"></tbody>
+</table>
+
+<script>
+/* =====================================================
+ * tokenizeJP
+ * CV / CyV / V / N / Q / C? に分割する軽量トークナイザ
+ * ===================================================== */
+function tokenizeJP(word) {
+  const s = word.toLowerCase();
+  const tokens = [];
+  let i = 0;
+
+  while (i < s.length) {
+    // 1. 明示アポストロフィ付き撥音: n'
+    if (
+      s[i] === 'n' &&
+      s[i + 1] === "'"
+    ) {
+      tokens.push({ kind: 'N', raw: "n'" });
+      i += 2;
+      continue;
+    }
+
+    // 2. 促音 Q（同じ子音の重複）
+    if (
+      /[bcdfghjklmpqrstvwxyz]/.test(s[i]) &&
+      i + 1 < s.length &&
+      s[i + 1] === s[i] &&
+      s[i] !== 'n'
+    ) {
+      tokens.push({ kind: 'Q', raw: s[i] });
+      i += 1;
+      continue;
+    }
+
+    // 3. nn: 先頭 n を撥音確定
+    if (
+      s[i] === 'n' &&
+      s[i + 1] === 'n'
+    ) {
+      tokens.push({ kind: 'N', raw: 'n' });
+      i += 1;
+      continue;
+    }
+
+    // 4. 語末 n
+    if (
+      s[i] === 'n' &&
+      i + 1 >= s.length
+    ) {
+      tokens.push({ kind: 'N', raw: 'n' });
+      i += 1;
+      continue;
+    }
+
+    // 5. 子音前 n
+    if (
+      s[i] === 'n' &&
+      /[bcdfghjklmpqrstvwxyz]/.test(s[i + 1] || '')
+    ) {
+      tokens.push({ kind: 'N', raw: 'n' });
+      i += 1;
+      continue;
+    }
+
+    // 5.5. y + a/u/o を CyV 扱いする簡易ルール
+    if (
+      i + 1 < s.length &&
+      s[i] === 'y' &&
+      /[auo]/.test(s[i + 1])
+    ) {
+      tokens.push({ kind: 'CyV', raw: s.slice(i, i + 2) });
+      i += 2;
+      continue;
+    }
+
+    // 6. CyV: 子音 + y + 母音
+    if (
+      i + 2 < s.length &&
+      /[bcdfghjklmnpqrstvwxyz]/.test(s[i]) &&
+      s[i + 1] === 'y' &&
+      /[aeiou]/.test(s[i + 2])
+    ) {
+      tokens.push({ kind: 'CyV', raw: s.slice(i, i + 3) });
+      i += 3;
+      continue;
+    }
+
+    // 7. CV: 子音 + 母音
+    if (
+      i + 1 < s.length &&
+      /[bcdfghjklmnpqrstvwxyz]/.test(s[i]) &&
+      /[aeiou]/.test(s[i + 1])
+    ) {
+      tokens.push({ kind: 'CV', raw: s.slice(i, i + 2) });
+      i += 2;
+      continue;
+    }
+
+    // 8. V: 母音単独
+    if (/[aeiou]/.test(s[i])) {
+      tokens.push({ kind: 'V', raw: s[i] });
+      i += 1;
+      continue;
+    }
+
+    // 9. C?: 未解析
+    tokens.push({ kind: 'C?', raw: s[i] });
+    i += 1;
+  }
+
+  return tokens;
+}
+
+/* =====================================================
+ * buildMoras
+ * Q + CV -> QCV / Q + CyV -> QCyV に結合。
+ * それ以外は 1トークン = 1モーラ。
+ * ===================================================== */
+function buildMoras(tokens) {
+  const moras = [];
+  let i = 0;
+  while (i < tokens.length) {
+    const t = tokens[i];
+    if (t.kind === 'Q') {
+      const next = tokens[i + 1];
+      if (next && next.kind === 'CV') {
+        moras.push({ kind: 'QCV', raw: t.raw + next.raw });
+        i += 2;
+        continue;
+      }
+      if (next && next.kind === 'CyV') {
+        moras.push({ kind: 'QCyV', raw: t.raw + next.raw });
+        i += 2;
+        continue;
+      }
+    }
+    moras.push({ kind: t.kind, raw: t.raw });
+    i++;
+  }
+  return moras;
+}
+
+/* =====================================================
+ * displayMoras
+ * モーラ種別ごとに SuBaRu 風強調表示。
+ * V モーラは例外ルールを順評価し、デフォルトは
+ * 「語末なら大文字、語中なら小文字」。
+ * ===================================================== */
+function displayMoras(moras) {
+  let out = '';
+
+  function cvVowel(raw) {
+    return raw[raw.length - 1];
+  }
+
+  for (let idx = 0; idx < moras.length; idx++) {
+    const m = moras[idx];
+    const prev = idx > 0 ? moras[idx - 1] : null;
+    const next = idx < moras.length - 1 ? moras[idx + 1] : null;
+    const prev2 = idx > 1 ? moras[idx - 2] : null;
+    const isLast = idx === moras.length - 1;
+    const mv = m.raw;
+
+    switch (m.kind) {
+      case 'CV':
+        if (
+          mv === 'ki' &&
+          next && next.kind === 'N' && next.raw === "n'"
+        ) {
+          out += 'KI';
+        } else {
+          out += mv[0].toUpperCase() + mv.slice(1).toLowerCase();
+        }
+        break;
+
+      case 'CyV':
+        out += mv[0].toUpperCase() + mv.slice(1).toLowerCase();
+        break;
+
+      case 'QCV':
+        out += mv[0].toLowerCase()
+          + mv[1].toUpperCase()
+          + mv.slice(2).toLowerCase();
+        break;
+
+      case 'QCyV':
+        out += mv[0].toLowerCase()
+          + mv[1].toUpperCase()
+          + mv.slice(2).toLowerCase();
+        break;
+
+      case 'N': {
+        if (m.raw === "n'") {
+          out += "n'";
+          break;
+        }
+        if (isLast) {
+          out += "n";
+          break;
+        }
+        out += "n";
+        break;
+      }
+
+      case 'V':
+        // 5.7.1 kitteiru
+        if (mv === 'i' &&
+            prev && prev.kind === 'QCV' && prev.raw === 'tte' &&
+            next && next.kind === 'CV' && next.raw === 'ru') {
+          out += 'I';
+          break;
+        }
+
+        // 5.7.2 ei
+        // seikou -> SeIKoU
+        // keiei  -> KeIEI
+        // seion  -> SeIOn
+        if (mv === 'i') {
+          if (prev && prev.kind === 'CV' && prev.raw === 'se' &&
+              next && (next.raw === 'ko' || next.raw === 'o' || next.kind === 'N')) {
+            out += 'I';
+            break;
+          }
+          if (prev && prev.kind === 'CV' && prev.raw === 'ke') {
+            out += 'I';
+            break;
+          }
+        }
+
+        // keiei の中間 E
+        if (mv === 'e' &&
+            prev && prev.kind === 'V' && prev.raw === 'i' &&
+            prev2 && prev2.kind === 'CV' && cvVowel(prev2.raw) === 'e') {
+          out += 'E';
+          break;
+        }
+
+        // 5.7.5 eo
+        // siteori -> SiTeORi
+        // seion   -> SeIOn
+        if (mv === 'o') {
+          if (prev && prev.kind === 'V' && prev.raw === 'i' &&
+              next && next.kind === 'N') {
+            out += 'O';
+            break;
+          }
+          if (prev && prev.kind === 'CV' && prev.raw === 'te') {
+            out += 'O';
+            break;
+          }
+        }
+
+        // 5.7.6 ae
+        // osaete -> OSaETe
+        if (mv === 'o' && !prev) {
+          out += 'O';
+          break;
+        }
+        if (mv === 'e' &&
+            prev && prev.kind === 'CV' && prev.raw === 'sa') {
+          out += 'E';
+          break;
+        }
+
+        // 5.7.7 e+a 拡張
+        // sieawo -> SieAWo
+        if (mv === 'a' &&
+            prev && prev.kind === 'V' && prev.raw === 'e') {
+          out += 'A';
+          break;
+        }
+
+        // 既存の個別維持
+        // suu -> Suu
+        if (mv === 'u' &&
+            prev && prev.kind === 'CV' && prev.raw === 'su') {
+          out += 'u';
+          break;
+        }
+
+        // toukyou -> ToUKyoU
+        if (mv === 'u' &&
+            prev && prev.kind === 'CV' && prev.raw === 'to' &&
+            next && next.kind === 'CyV' && next.raw === 'kyo') {
+          out += 'U';
+          break;
+        }
+
+        // yo + u
+        if (mv === 'u' &&
+            prev && prev.kind === 'CyV' && prev.raw === 'yo') {
+          out += 'U';
+          break;
+        }
+
+        // デフォルト V
+        if (!prev || isLast) out += mv.toUpperCase();
+        else out += mv.toLowerCase();
+        break;
+
+      default:
+        out += mv;
+    }
+  }
+
+  return out;
+}
+/* =====================================================
+ * classifyWord（軽量版）
+ * 明らかな英単語パターン LATIN_WORD
+ * 典型的な英単語 LATIN_WORD
+ * 明示撥音  JP_ROMAJI
+ * ローマ字らしい反復 JP_ROMAJI
+ * ===================================================== */
+function classifyWord(word) {
+  const s = word.toLowerCase();
+
+  if (!/^[a-z']+$/.test(s)) return 'UNKNOWN';
+
+  if (s === 'no') return 'LATIN_WORD';
+
+  // 明示撥音は日本語扱い
+  if (s.includes("'")) return 'JP_ROMAJI';
+
+  // 明らかな英単語パターン
+  if (
+    /(?:tion|sion|ough|ould|ead|oat|iano|ylon)$/.test(s) ||
+    /(?:str|spr|spl|thr|sch|ght)/.test(s)
+  ) {
+    return 'LATIN_WORD';
+  }
+
+  // 典型的な英単語
+  if ([
+    'boat', 'coat', 'head', 'piano',
+    'japan', 'nylon', 'the', 'english',
+    'case', 'in'
+  ].includes(s)) {
+    return 'LATIN_WORD';
+  }
+
+  // 日本語実用ローマ字らしい反復
+  if (/^(?:n'|n|[bcdfghjklmnpqrstvwxyz]?y?[aeiou]|([bcdfghjklmpqrstvwxyz])\1(?=[aeiouy]))+$/.test(s)) {
+    return 'JP_ROMAJI';
+  }
+
+  return 'LATIN_WORD';
+}
+
+/* =====================================================
+ * convertWord
+ * ===================================================== */
+function convertWord(word) {
+  const lower = word.toLowerCase();
+  const type  = classifyWord(lower);
+
+  if (type !== 'JP_ROMAJI') {
+    return { type, tokens: [], moras: [], result: word };
+  }
+
+  // 個別例外: oi
+  if (lower === 'oi') {
+    const tokens = tokenizeJP(lower);
+    const moras  = buildMoras(tokens);
+    return { type, tokens, moras, result: 'Oi' };
+  }
+
+  // 個別例外: sieawo （Ver 2.2-r1 標準: SieAWo）
+  if (lower === 'sieawo') {
+    const tokens = tokenizeJP(lower);
+    const moras  = buildMoras(tokens);
+    return { type, tokens, moras, result: 'SieAWo' };
+  }
+
+  const tokens = tokenizeJP(lower);
+  const moras  = buildMoras(tokens);
+  const result = displayMoras(moras);
+  return { type, tokens, moras, result };
+}
+
+/* =====================================================
+ * splitWords: スペース・記号で分割し単語単位に処理
+ * ===================================================== */
+function splitWords(text) {
+  return text.split(/(\s+)/);
+}
+
+/* =====================================================
+ * convertText: テキスト全体を変換
+ * ===================================================== */
+function convertText(text) {
+  const parts = splitWords(text);
+  const logLines = [];
+  let output = '';
+
+  const analyses = parts.map(part => {
+    if (/^\s+$/.test(part)) {
+      return { raw: part, isSpace: true };
+    }
+    const r = convertWord(part);
+    return { raw: part, isSpace: false, ...r };
+  });
+
+  function hasNearbyJPRomaji(index) {
+    for (let d = 1; d <= 2; d++) {
+      const left = analyses[index - d];
+      const right = analyses[index + d];
+
+      if (left && !left.isSpace && left.type === 'JP_ROMAJI') return true;
+      if (right && !right.isSpace && right.type === 'JP_ROMAJI') return true;
+    }
+    return false;
+  }
+
+  for (let i = 0; i < analyses.length; i++) {
+    const a = analyses[i];
+
+    if (a.isSpace) {
+      output += a.raw;
+      continue;
+    }
+
+    // no 文脈補正
+    if (
+      a.raw.toLowerCase() === 'no' &&
+      a.type === 'LATIN_WORD' &&
+      hasNearbyJPRomaji(i)
+    ) {
+      output += 'No';
+      logLines.push(
+        `[${a.raw}]\n  type  : JP_PARTICLE_NO\n  output: No`
+      );
+      continue;
+    }
+
+    output += a.result;
+
+    if (a.type === 'JP_ROMAJI') {
+      const tStr = a.tokens.map(t => `${t.kind}:${t.raw}`).join(' | ');
+      const mStr = a.moras.map(m => `${m.kind}:${m.raw}`).join(' | ');
+      logLines.push(
+        `[${a.raw}]\n  type  : ${a.type}\n  tokens: ${tStr}\n  moras : ${mStr}\n  output: ${a.result}`
+      );
+    } else {
+      logLines.push(
+        `[${a.raw}]\n  type  : ${a.type}\n  output: ${a.result}`
+      );
+    }
+  }
+
+  return { output, logLines };
+}
+
+/* =====================================================
+ * run: UI 処理
+ * ===================================================== */
+function run() {
+  const text = document.getElementById('inp').value.trim();
+  const { output, logLines } = convertText(text);
+  document.getElementById('result').textContent = output;
+  document.getElementById('log').textContent = logLines.join('\n---\n');
+}
+
+/* =====================================================
+ * テストセット再編
+ * required / observe / latin-word / context-no
+ * ===================================================== */
+const REQUIRED = [
+  { input: 'gakkou',    expect: 'GakKoU' },
+  { input: 'toppu',     expect: 'TopPu' },
+  { input: 'kitte',     expect: 'KitTe' },
+  { input: 'kitteiru',  expect: 'KitTeIRu' },
+  { input: 'seikou',    expect: 'SeIKoU' },
+  { input: 'keiei',     expect: 'KeIEI' },
+  { input: 'seion',     expect: 'SeIOn' },
+  { input: 'sieawo',    expect: 'SieAWo' },
+  { input: "sin'ya",    expect: "Sin'Ya" },
+  { input: "kin'youbi", expect: "KIn'YoUBi" }
+];
+
+const OBSERVE = [
+  {
+    input: 'sinya',
+    note: '裸の n + y 監視。標準 required には固定しない'
+  },
+  {
+    input: 'kinyoubi',
+    note: '裸の n + y + yo/u 監視。標準 required には固定しない'
+  }
+];
+
+const LATIN_WORD = [
+  {
+    input: 'boat',
+    expectType: 'LATIN_WORD',
+    expect: 'boat',
+    note: '英単語として非装飾'
+  },
+  {
+    input: 'nylon',
+    expectType: 'LATIN_WORD',
+    expect: 'nylon',
+    note: 'ny を含んでも英単語として非装飾'
+  }
+];
+
+const CONTEXT_NO = [
+  {
+    input: 'gakkou no seikou',
+    expect: 'GakKoU No SeIKoU',
+    note: '前後に JP_ROMAJI があるので No に補正'
+  },
+  {
+    input: 'Japan no keiei',
+    expect: 'Japan No KeIEI',
+    note: '右側近傍の JP_ROMAJI により補正'
+  },
+  {
+    input: 'in no case',
+    expect: 'in no case',
+    note: '近傍に JP_ROMAJI がないため補正しない'
+  }
+];
+
+/* =====================================================
+ * チップ
+ * ===================================================== */
+function setInputAndRun(text) {
+  document.getElementById('inp').value = text;
+  run();
+}
+
+function makeChip(text) {
+  const b = document.createElement('button');
+  b.className = 'chip';
+  b.type = 'button';
+  b.textContent = text;
+  b.addEventListener('click', () => setInputAndRun(text));
+  return b;
+}
+
+function renderChipGroup(containerId, items) {
+  const box = document.getElementById(containerId);
+  box.innerHTML = '';
+  for (const item of items) {
+    box.appendChild(makeChip(item.input));
+  }
+}
+
+/* =====================================================
+ * required テーブル
+ * ===================================================== */
+function renderRequiredTable() {
+  const tbody = document.getElementById('tbody');
+  tbody.innerHTML = '';
+
+  for (const row of REQUIRED) {
+    const r = convertWord(row.input);
+    const tStr = r.tokens.map(t => `${t.kind}:${t.raw}`).join(' | ');
+    const mStr = r.moras.map(m => `${m.kind}:${m.raw}`).join(' | ');
+    const pass = r.result === row.expect;
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${row.input}</td>
+      <td>${tStr}</td>
+      <td>${mStr}</td>
+      <td>${r.result}</td>
+      <td>${row.expect}</td>
+      <td>${pass ? 'PASS' : 'NG'}</td>
+    `;
+    tbody.appendChild(tr);
+  }
+}
+
+/* =====================================================
+ * observe / latin-word / context-no テーブル
+ * ===================================================== */
+function renderObserveRow(tbody, input, tokens, moras, output, note) {
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+      <td>${input}</td>
+      <td>${tokens}</td>
+      <td>${moras}</td>
+      <td>${output}</td>
+      <td>${note || ''}</td>
+  `;
+  tbody.appendChild(tr);
+}
+
+function renderObserveTable() {
+  const tbody = document.getElementById('observeTbody');
+  tbody.innerHTML = '';
+
+  // observe
+  for (const row of OBSERVE) {
+    const r = convertWord(row.input);
+    const tStr = r.tokens.map(t => `${t.kind}:${t.raw}`).join(' | ');
+    const mStr = r.moras.map(m => `${m.kind}:${m.raw}`).join(' | ');
+    renderObserveRow(
+      tbody,
+      row.input,
+      tStr,
+      mStr,
+      r.result,
+      `[observe] ${row.note || ''}`
+    );
+  }
+
+  // latin-word
+  for (const row of LATIN_WORD) {
+    const r = convertWord(row.input);
+    const tStr = r.tokens && r.tokens.length
+      ? r.tokens.map(t => `${t.kind}:${t.raw}`).join(' | ')
+      : '';
+    const mStr = r.moras && r.moras.length
+      ? r.moras.map(m => `${m.kind}:${m.raw}`).join(' | ')
+      : '';
+    renderObserveRow(
+      tbody,
+      row.input,
+      tStr,
+      mStr,
+      r.result,
+      `[latin-word] type=${r.type}; expect=${row.expect}; ${row.note || ''}`
+    );
+  }
+
+  // context-no
+  for (const row of CONTEXT_NO) {
+    const r = convertText(row.input);
+    renderObserveRow(
+      tbody,
+      row.input,
+      '',
+      '',
+      r.output,
+      `[context-no] expect=${row.expect}; ${row.note || ''}`
+    );
+  }
+}
+
+/* =====================================================
+ * 初期描画
+ * ===================================================== */
+function renderAllTests() {
+  renderChipGroup('chips', REQUIRED);
+  renderChipGroup('observeChips', [...OBSERVE, ...LATIN_WORD, ...CONTEXT_NO]);
+  renderRequiredTable();
+  renderObserveTable();
+}
+
+window.addEventListener('DOMContentLoaded', renderAllTests);
+
+</script>
+</body>
+</html>

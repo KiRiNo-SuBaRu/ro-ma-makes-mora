@@ -1,0 +1,7 @@
+{
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "test": "node --test dist/test/*.test.js"
+  }
+}

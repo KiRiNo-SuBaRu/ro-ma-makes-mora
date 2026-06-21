@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Subaru UI Demo</title>
+  <link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&f[]=zodiak@400,700&display=swap" rel="stylesheet">
+  <style>
+    :root, [data-theme="light"] {
+      --text-xs: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
+      --text-sm: clamp(0.875rem, 0.8rem + 0.35vw, 1rem);
+      --text-base: clamp(1rem, 0.95rem + 0.25vw, 1.125rem);
+      --text-lg: clamp(1.125rem, 1rem + 0.75vw, 1.5rem);
+      --text-xl: clamp(1.5rem, 1.2rem + 1.25vw, 2.25rem);
+      --text-2xl: clamp(2rem, 1.2rem + 2.5vw, 3.5rem);
+      --space-1: .25rem; --space-2: .5rem; --space-3: .75rem; --space-4: 1rem; --space-5: 1.25rem; --space-6: 1.5rem; --space-8: 2rem; --space-10: 2.5rem; --space-12: 3rem;
+      --color-bg:#f7f6f2; --color-surface:#f9f8f5; --color-surface-2:#fbfbf9; --color-surface-offset:#f1efe9; --color-border:#d4d1ca; --color-divider:#ddd9d2;
+      --color-text:#28251d; --color-text-muted:#6f6c66; --color-text-faint:#a6a29b; --color-primary:#01696f; --color-primary-hover:#0c4e54; --color-primary-highlight:#d7e5e2;
+      --radius-sm:.5rem; --radius-md:.9rem; --radius-lg:1.25rem; --radius-xl:1.75rem; --shadow-sm:0 1px 2px rgba(40,37,29,.06); --shadow-md:0 8px 24px rgba(40,37,29,.08);
+      --font-body:'Satoshi', 'Inter', sans-serif; --font-display:'Zodiak', 'Georgia', serif;
+    }
+    [data-theme="dark"] {
+      --color-bg:#161514; --color-surface:#1c1b19; --color-surface-2:#22211f; --color-surface-offset:#262523; --color-border:#3a3936; --color-divider:#2b2a28;
+      --color-text:#d2d0cb; --color-text-muted:#9d9991; --color-text-faint:#6f6b65; --color-primary:#63a8b0; --color-primary-hover:#84bcc2; --color-primary-highlight:#2c3738;
+      --shadow-sm:0 1px 2px rgba(0,0,0,.2); --shadow-md:0 10px 28px rgba(0,0,0,.32);
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html{-webkit-text-size-adjust:none;text-size-adjust:none;scroll-behavior:smooth}
+    body{min-height:100dvh;font-family:var(--font-body);font-size:var(--text-base);line-height:1.65;background:radial-gradient(circle at top right, var(--color-primary-highlight), transparent 28%), var(--color-bg);color:var(--color-text)}
+    button,input,textarea{font:inherit;color:inherit}
+    button{cursor:pointer;border:none;background:none}
+    textarea{resize:vertical}
+    .app{max-width:1200px;margin:0 auto;padding:var(--space-6) var(--space-4) var(--space-12)}
+    .topbar{display:flex;align-items:center;justify-content:space-between;gap:var(--space-4);margin-bottom:var(--space-8)}
+    .brand{display:flex;align-items:center;gap:var(--space-3)}
+    .logo{width:44px;height:44px;border:1px solid var(--color-border);border-radius:14px;display:grid;place-items:center;background:var(--color-surface);box-shadow:var(--shadow-sm)}
+    .brand svg{width:28px;height:28px}
+    .brand h1{font-family:var(--font-display);font-size:var(--text-xl);line-height:1.05;letter-spacing:-.03em}
+    .brand p{color:var(--color-text-muted);font-size:var(--text-sm)}
+    .theme-toggle{min-width:44px;min-height:44px;border-radius:999px;border:1px solid var(--color-border);background:var(--color-surface);display:grid;place-items:center;box-shadow:var(--shadow-sm)}
+    .hero{display:grid;grid-template-columns:1.2fr .8fr;gap:var(--space-6);margin-bottom:var(--space-6)}
+    .panel{background:color-mix(in srgb, var(--color-surface) 90%, transparent);border:1px solid var(--color-border);border-radius:var(--radius-xl);box-shadow:var(--shadow-md)}
+    .hero-copy,.rules{padding:var(--space-6)}
+    .eyebrow{font-size:var(--text-xs);letter-spacing:.14em;text-transform:uppercase;color:var(--color-primary);font-weight:700;margin-bottom:var(--space-3)}
+    .hero h2{font-family:var(--font-display);font-size:var(--text-2xl);line-height:1.02;letter-spacing:-.04em;margin-bottom:var(--space-4)}
+    .hero p,.rules li{color:var(--color-text-muted)}
+    .rules ul{list-style:none;display:grid;gap:var(--space-3)}
+    .workspace{display:grid;grid-template-columns:1.05fr .95fr;gap:var(--space-6)}
+    .stack{display:grid;gap:var(--space-6)}
+    .block{padding:var(--space-6)}
+    .block h3{font-size:var(--text-lg);margin-bottom:var(--space-3)}
+    .block p.helper{font-size:var(--text-sm);color:var(--color-text-muted);margin-bottom:var(--space-4)}
+    label{display:block;font-size:var(--text-sm);font-weight:700;margin-bottom:var(--space-2)}
+    textarea,input{width:100%;border:1px solid var(--color-border);background:var(--color-surface-2);border-radius:var(--radius-md);padding:var(--space-4);min-height:52px}
+    textarea:focus,input:focus{outline:2px solid var(--color-primary);outline-offset:2px}
+    .actions{display:flex;flex-wrap:wrap;gap:var(--space-3);margin-top:var(--space-4)}
+    .btn{min-height:46px;padding:0 var(--space-5);border-radius:999px;font-weight:700;border:1px solid var(--color-border)}
+    .btn-primary{background:var(--color-primary);color:#fff;border-color:transparent}
+    .btn-primary:hover{background:var(--color-primary-hover)}
+    .btn-secondary{background:var(--color-surface)}
+    .btn-ghost{background:transparent}
+    .grid-two{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4)}
+    .output{display:grid;gap:var(--space-4)}
+    .card{padding:var(--space-4);border-radius:var(--radius-lg);background:var(--color-surface-2);border:1px solid var(--color-border)}
+    .card h4{font-size:var(--text-sm);letter-spacing:.08em;text-transform:uppercase;color:var(--color-text-muted);margin-bottom:var(--space-2)}
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;word-break:break-word}
+    .display-main{font-size:clamp(1.35rem,1.1rem + 1vw,2rem);line-height:1.45;font-weight:700}
+    .cell.mono .display-raw-caps {margin-top: 0.2rem; font-size: var(--text-sm); color: var(--color-text-muted)}
+    .pill-row{display:flex;flex-wrap:wrap;gap:var(--space-2)}
+    .pill{padding:.45rem .7rem;border-radius:999px;background:var(--color-surface-offset);border:1px solid var(--color-border);font-size:var(--text-sm);display:inline-flex;align-items:center;gap:.45rem}.pill.compound-hit{background:var(--color-primary-highlight);border-color:color-mix(in srgb, var(--color-primary) 35%, var(--color-border));color:var(--color-text)}.tag{display:inline-flex;align-items:center;padding:.18rem .5rem;border-radius:999px;font-size:var(--text-xs);font-weight:700;letter-spacing:.04em;text-transform:uppercase;background:var(--color-surface);border:1px solid var(--color-border)}.tag.compound{background:var(--color-primary-highlight);border-color:color-mix(in srgb, var(--color-primary) 35%, var(--color-border));color:var(--color-primary)}
+    .table{display:grid;gap:1px;background:var(--color-divider);border-radius:var(--radius-lg);overflow:hidden}
+    .row{display:grid;grid-template-columns:.8fr 1.4fr 1.2fr;background:var(--color-surface)}
+    .cell{padding:var(--space-3);font-size:var(--text-sm)}
+    .head .cell{font-weight:700;background:var(--color-surface-offset)}
+    .note{font-size:var(--text-sm);color:var(--color-text-muted)}
+    @media (max-width: 960px){.hero,.workspace,.grid-two,.row{grid-template-columns:1fr}.row{display:block}.cell{border-bottom:1px solid var(--color-divider)}}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">
+          <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 49 32 15l18 34" />
+            <path d="M22 35h20" />
+            <path d="M28 49h8" />
+          </svg>
+        </div>
+        <div>
+          <h1>すばる式ローマ字補完デモ</h1>
+          <p>小文字ローマ字から、すばる式ローマ字へ補完表示するUI</p>
+        </div>
+      </div>
+      <button class="theme-toggle" type="button" data-theme-toggle aria-label="dark mode toggle">?</button>
+    </header>
+
+    <section class="hero">
+      <div class="panel hero-copy">
+        <div class="eyebrow">Part-002</div>
+        <h2>小文字ローマ字を、<br>すばる式ローマ字へ<br>補完表示する。</h2>
+        <p>このデモは、語単位と仮名塊単位の再解釈を通して、実用ローマ字をすばる式ローマ字へ補完表示する観察用UIです。入力、語分割、モーラ風トークン、再束ね後の仮名塊、基本表示、例外適用後表示を並べて確認できます。</p>
+      </div>
+      <aside class="panel rules">
+        <div class="eyebrow">Core rules</div>
+        <ul>
+          <li>子音を表す先頭字は大文字化。</li>
+          <li>独立母音も大文字化。</li>
+          <li>撥音は <span class="mono">n</span>、母音や <span class="mono">y</span> 前だけ <span class="mono">n'</span>。</li>
+          <li>促音は後続子音の補完だけを小文字で見せる。</li>
+          <li>語末 n 従属に加え、CV+同母音V は長母音塊として保持する。</li>
+        </ul>
+      </aside>
+    </section>
+
+    <section class="workspace">
+      <div class="stack">
+        <div class="panel block">
+          <h3>入力</h3>
+          <p class="helper">半角小文字の実用ローマ字を入力します。空白は語境界として保持します。</p>
+          <label for="inputText">ローマ字入力</label>
+          <textarea id="inputText" rows="7">nippon ni okeru kensaku enzin tositeha kahansuuno sieawo kakutoku siteori kakukensaku purobaidawo osaete gyoukai toppuno zaniaru</textarea>
+          <div class="actions">
+            <button class="btn btn-primary" id="convertBtn" type="button">変換する</button>
+            <button class="btn btn-secondary" id="sampleBtn" type="button">長文サンプル</button>
+            <button class="btn btn-ghost" id="clearBtn" type="button">クリア</button>
+          </div>
+        </div>
+
+        <div class="panel block">
+          <h3>公開表示例外</h3>
+          <p class="helper">基本表示では出しにくい塊は、後段のJSONで公開表示だけ上書きします。中点・句読点・ハイフンを含む複合語も、表記単位まるごと1キーで指定できます。</p>
+          <label for="exceptions">display-exception-rules.json 相当</label>
+          <textarea id="exceptions" rows="8">{
+  "okeru": "OKeRu",
+  "siteori": "SiTeORi",
+  "osaete": "OSaETe",
+  "gyoukai": "GyoUKai",
+  "zaniaru": "ZaNiARu",
+  "iwayuru": "IWaYuRu",
+  "sai": "SaI",
+  "hukusuu": "HuKuSuU",
+  "kokunai": "KoKuNaI",
+  "kokugai": "KoKuGaI",
+  "mottomo": "MoTToMo",
+  "kunreisiki": "KunReISiKi",
+  "kaihatu": "KaiHaTu",
+  "eigo・ratengo": "eIGo・RaTenGo",
+  "gaikokuzin": "GaiKoKuZin",
+  "annai": "AnNai",
+  "honyaku": "HoNyaKu",
+  "muite": "MuiTe"
+}</textarea>
+        </div>
+      </div>
+
+      <div class="stack">
+        <div class="panel block output">
+          <div class="card">
+            <h4>例外適用後表示</h4>
+            <div class="display-main mono" id="finalDisplay"></div>
+          </div>
+          <div class="grid-two">
+            <div class="card">
+              <h4>基本表示</h4>
+              <div class="mono" id="baseDisplay"></div>
+            </div>
+            <div class="card">
+              <h4>入力単位分割</h4>
+              <div class="pill-row" id="wordSplit"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel block">
+          <h3>語と仮名塊の確認</h3>
+          <p class="helper">語と複合語の表記単位 → モーラ風トークン → 再束ね後の仮名塊 → 基本表示 → 例外適用後表示 を一覧します。</p>
+          <div class="table" id="wordTable"></div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const sampleText = "nippon ni okeru kensaku enzin tositeha kahansuuno sieawo kakutoku siteori kakukensaku purobaidawo osaete gyoukai toppuno zaniaru";
+    const vowels = new Set(['a','i','u','e','o']);
+    const digraphHeads = ['ky','gy','sy','zy','ty','dy','ny','hy','by','py','my','ry'];
+    const geminateHeads = new Set(['k','s','t','p']);
+
+    function splitInputWords(raw) {
+      return raw.trim().split(/\s+/).filter(Boolean);
+    }
+
+    function splitNotationUnits(raw) {
+      const chars = Array.from(raw || '');
+      const units = [];
+      let current = '';
+      const joiners = new Set(['・', 'ー', '-', '（', '）', '(', ')', '、', '。', ',', '.']);
+
+      for (const ch of chars) {
+        if (/\s/.test(ch)) {
+          if (current) units.push(current);
+          current = '';
+          continue;
+        }
+        if (joiners.has(ch)) {
+          current += ch;
+          continue;
+        }
+        current += ch;
+      }
+      if (current) units.push(current);
+      return units.filter(Boolean);
+    }
+
+    function buildCompoundUnits(raw, exceptions) {
+      const units = splitNotationUnits(raw);
+      const built = [];
+      let i = 0;
+      while (i < units.length) {
+        let matched = null;
+        let matchedSpan = 0;
+        for (let span = Math.min(4, units.length - i); span >= 1; span -= 1) {
+          const candidate = units.slice(i, i + span).join(' ');
+          if (exceptions[candidate]) {
+            matched = candidate;
+            matchedSpan = span;
+            break;
+          }
+        }
+        if (matched) {
+          built.push({ raw: matched, kind: matchedSpan > 1 || /[・、。,.()（）-]/.test(matched) ? 'compound' : 'word', exceptionHit: true, matchedSpan });
+          i += matchedSpan;
+          continue;
+        }
+        built.push({ raw: units[i], kind: /[・、。,.()（）-]/.test(units[i]) ? 'compound' : 'word', exceptionHit: false, matchedSpan: 1 });
+        i += 1;
+      }
+      return built;
+    }
+
+    function parseExceptions(text) {
+      try {
+        const parsed = JSON.parse(text || '{}');
+        return { data: parsed, error: '' };
+      } catch (error) {
+        return { data: {}, error: error.message };
+      }
+    }
+
+    function tokenizeWord(word) {
+      const tokens = [];
+      let i = 0;
+      while (i < word.length) {
+        const ch = word[i];
+        const next = word[i + 1] || '';
+        const pair = word.slice(i, i + 2);
+
+        if (geminateHeads.has(ch) && ch === next) {
+          tokens.push({ type: 'Q', raw: ch });
+          i += 1;
+          continue;
+        }
+
+        if (ch === 'n') {
+          if (!next || !vowels.has(next) && next !== 'y') {
+            tokens.push({ type: 'N', raw: 'n' });
+            i += 1;
+            continue;
+          }
+        }
+
+        if (i + 2 < word.length && digraphHeads.includes(pair) && vowels.has(word[i + 2])) {
+          tokens.push({ type: 'CyV', raw: word.slice(i, i + 3) });
+          i += 3;
+          continue;
+        }
+
+        if (vowels.has(ch)) {
+          tokens.push({ type: 'V', raw: ch });
+          i += 1;
+          continue;
+        }
+
+        if (i + 1 < word.length && vowels.has(next)) {
+          tokens.push({ type: 'CV', raw: word.slice(i, i + 2) });
+          i += 2;
+          continue;
+        }
+
+        tokens.push({ type: 'C?', raw: ch });
+        i += 1;
+      }
+      return tokens;
+    }
+
+    function renderMora(raw) {
+      if (!raw) return '';
+      if (raw.length === 1 && vowels.has(raw)) return raw.toUpperCase();
+      if (raw === 'ro') return 'Ro';
+      return raw.charAt(0).toUpperCase() + raw.slice(1);
+    }
+
+	function makeConsonantCaps(raw) {
+	  if (!raw) return "";
+	
+	  const vowels = ['a', 'i', 'u', 'e', 'o'];
+	
+	  let result = "";
+	  for (const ch of raw) {
+	    const lower = ch.toLowerCase();
+	
+	    // 英字以外（長音記号、ハイフン、アポストロフィなど）はそのまま
+	    if (!/[a-zA-Z]/.test(ch)) {
+	      result += ch;
+	      continue;
+	    }
+	
+	    // 母音はそのまま（大文字・小文字を変えない）
+	    if (vowels.includes(lower)) {
+	      result += ch;
+	    } else {
+	      // 子音は大文字化
+	      result += ch.toUpperCase();
+	    }
+	  }
+
+  return result;
+}
+
+    function duplicateHead(raw) {
+      return raw.charAt(0) + raw;
+    }
+
+    function isConsonantInitial(token) {
+      return token && (token.type === 'CV' || token.type === 'CyV');
+    }
+
+    function isLongVowelKeep(current, next) {
+      if (!current || current.type !== 'CV' || !next || next.type !== 'V') return false;
+      return current.raw.slice(-1) === next.raw;
+    }
+
+    function isDoubleVowelKeep(current, next) {
+      if (!current || current.type !== 'CV' || !next || next.type !== 'V') return false;
+      const pair = current.raw.slice(-1) + next.raw;
+      return ['ai', 'oi', 'ui'].includes(pair);
+    }
+
+    function shouldKeepVowelChain(current, next, next2) {
+      if (!current || current.type !== 'CV' || !next || next.type !== 'V') return false;
+      if (current.raw === 'si' && next.raw === 'e') return true;
+      if (current.raw === 'zi' && next.raw === 'a') return true;
+      if (next2 && next2.type === 'V' && current.raw === 'si' && next.raw === 'e' && next2.raw === 'a') return true;
+      return false;
+    }
+
+    function shouldSplitIndependentVowel(current, next) {
+      if (!current || !next || next.type !== 'V') return false;
+      if (current.type === 'CV') {
+        const pair = current.raw.slice(-1) + next.raw;
+        if (['eo', 'ae', 'ia', 'oe', 'ai'].includes(pair)) return true;
+      }
+      if (current.type === 'CyV') {
+        if (current.raw === 'gyo' && next.raw === 'u') return true;
+      }
+      return false;
+    }
+
+    function absorbFinalN(clusters) {
+      if (clusters.length < 2) return clusters;
+      const last = clusters[clusters.length - 1];
+      const prev = clusters[clusters.length - 2];
+      if (!last || last.type !== 'N') return clusters;
+      prev.display += 'n';
+      prev.type += '+final-n';
+      prev.source = [...prev.source, ...last.source];
+      clusters.pop();
+      return absorbFinalN(clusters);
+    }
+
+    function reinterpretWordTokens(tokens) {
+      const clusters = [];
+      let i = 0;
+      while (i < tokens.length) {
+        const current = tokens[i];
+        const next = tokens[i + 1];
+        const next2 = tokens[i + 2];
+
+        if (current && current.type === 'Q' && next && next.type === 'CyV') {
+          clusters.push({
+            type: 'Q+CyV',
+            source: [current, next],
+            display: duplicateHead(next.raw)
+          });
+          i += 2;
+          continue;
+        }
+
+        if (current && current.type === 'Q' && next && next.type === 'CV') {
+          clusters.push({
+            type: 'Q+CV',
+            source: [current, next],
+            display: duplicateHead(next.raw)
+          });
+          i += 2;
+          continue;
+        }
+
+        if (current && current.type === 'CV' && next && next.type === 'N' && (!next2 || isConsonantInitial(next2))) {
+          clusters.push({
+            type: 'CVn',
+            source: [current, next],
+            display: renderMora(current.raw) + 'n'
+          });
+          i += 2;
+          continue;
+        }
+
+        if (current && current.type === 'V' && next && next.type === 'N' && (!next2 || isConsonantInitial(next2))) {
+          clusters.push({
+            type: 'Vn',
+            source: [current, next],
+            display: current.raw.toUpperCase() + 'n'
+          });
+          i += 2;
+          continue;
+        }
+
+        if (current && current.type === 'CV' && next && next.type === 'V' && next2 && next2.type === 'V' && shouldKeepVowelChain(current, next, next2)) {
+          clusters.push({
+            type: 'CV+VV-keep',
+            source: [current, next, next2],
+            display: renderMora(current.raw) + next.raw + next2.raw
+          });
+          i += 3;
+          continue;
+        }
+
+        if (current && current.type === 'CV' && next && next.type === 'V' && shouldKeepVowelChain(current, next, next2)) {
+          clusters.push({
+            type: 'CV+V-keep',
+            source: [current, next],
+            display: renderMora(current.raw) + next.raw
+          });
+          i += 2;
+          continue;
+        }
+
+        if (current && current.type === 'CV' && next && next.type === 'V' && isLongVowelKeep(current, next)) {
+          clusters.push({
+            type: 'CV+VV-long',
+            source: [current, next],
+            display: renderMora(current.raw) + next.raw
+          });
+          i += 2;
+          continue;
+        }
+
+        if (current && current.type === 'CV' && next && next.type === 'V' && isDoubleVowelKeep(current, next)) {
+          clusters.push({
+            type: 'CV+VV-diphthong',
+            source: [current, next],
+            display: renderMora(current.raw) + next.raw
+          });
+          i += 2;
+          continue;
+        }
+
+        if (current && current.type === 'CyV' && next && next.type === 'V' && shouldSplitIndependentVowel(current, next)) {
+          clusters.push({
+            type: 'CyV',
+            source: [current],
+            display: renderMora(current.raw)
+          });
+          clusters.push({
+            type: 'V-independent',
+            source: [next],
+            display: next.raw.toUpperCase()
+          });
+          i += 2;
+          continue;
+        }
+
+        if (current && current.type === 'CV' && next && next.type === 'V' && shouldSplitIndependentVowel(current, next)) {
+          clusters.push({
+            type: 'CV',
+            source: [current],
+            display: renderMora(current.raw)
+          });
+          clusters.push({
+            type: 'V-independent',
+            source: [next],
+            display: next.raw.toUpperCase()
+          });
+          i += 2;
+          continue;
+        }
+
+        clusters.push({
+          type: current.type,
+          source: [current],
+          display: renderMora(current.raw)
+        });
+        i += 1;
+      }
+      return absorbFinalN(clusters);
+    }
+
+    function applyWordLevelExceptions(word, baseDisplay, exceptions) {
+      return exceptions[word] || baseDisplay;
+    }
+
+    function buildWordLevelDisplay(unit, exceptions) {
+      const word = typeof unit === 'string' ? unit : unit.raw;
+      const tokens = tokenizeWord(word);
+      const clusters = reinterpretWordTokens(tokens);
+      const baseDisplay = clusters.map(cluster => cluster.display).join('');
+      return {
+        word,
+        unitKind: typeof unit === 'string' ? 'word' : unit.kind,
+        exceptionHit: typeof unit === 'string' ? false : Boolean(unit.exceptionHit),
+        matchedSpan: typeof unit === 'string' ? 1 : unit.matchedSpan || 1,
+        tokens,
+        clusters,
+        baseDisplay,
+        finalDisplay: applyWordLevelExceptions(word, baseDisplay, exceptions)
+      };
+    }
+
+    function computeDisplayForRaw(raw, exceptions) {
+      const units = buildCompoundUnits(raw, exceptions).map(unit => buildWordLevelDisplay(unit, exceptions));
+      return {
+        words: units,
+        baseDisplay: units.map(w => w.baseDisplay).join(' '),
+        finalDisplay: units.map(w => w.finalDisplay).join(' ')
+      };
+    }
+
+    function render() {
+      const input = document.getElementById('inputText').value.trim().toLowerCase();
+      const exceptionState = parseExceptions(document.getElementById('exceptions').value);
+      const result = computeDisplayForRaw(input, exceptionState.data);
+
+      document.getElementById('baseDisplay').textContent = result.baseDisplay || '?';
+      document.getElementById('finalDisplay').textContent = result.finalDisplay || '?';
+
+      const splitEl = document.getElementById('wordSplit');
+      splitEl.innerHTML = '';
+      result.words.forEach(item => {
+        const pill = document.createElement('span');
+        pill.className = `pill mono${item.exceptionHit ? ' compound-hit' : ''}`;
+        pill.innerHTML = `${item.word}${item.exceptionHit ? '<span class="tag compound">複合語例外</span>' : item.unitKind === 'compound' ? '<span class="tag">複合語</span>' : ''}`;
+        splitEl.appendChild(pill);
+      });
+
+      const table = document.getElementById('wordTable');
+      table.innerHTML = '';
+      const head = document.createElement('div');
+      head.className = 'row head';
+      head.innerHTML = '<div class="cell">表記単位</div><div class="cell">トークン / 仮名塊</div><div class="cell">表示</div>';
+      table.appendChild(head);
+
+      result.words.forEach(item => {
+        const row = document.createElement('div');
+        row.className = 'row';
+
+        const tokenText = item.tokens.map(token => `${token.type}:${token.raw}`).join(' / ');
+        const clusterText = item.clusters.map(cluster => `${cluster.type}:${cluster.display}`).join(' / ');
+
+        // 入力ローマ字（4方式そのまま）から、子音だけ大文字の強調表示を作る
+        // 今回の処理では input 全体を toLowerCase 済みで扱っているので、
+        // unit 単位の word 自体が「ローマ字の表記単位」としてそのまま使える。
+        const rawInput = item.word || "";
+        const rawCaps = makeConsonantCaps(rawInput);
+
+        row.innerHTML = `
+          <div class="cell mono">
+            ${item.word}<br>
+            <span class="note">
+              ${item.exceptionHit ? '複合語例外が適用' : item.unitKind === 'compound' ? '複合語単位' : '通常語'}
+            </span>
+          </div>
+          <div class="cell mono">
+            ${tokenText}<br>
+            <span class="note">
+              ${clusterText}
+            </span>
+          </div>
+          <div class="cell mono">
+            <div class="display-main">
+              ${item.baseDisplay} → ${item.finalDisplay}
+            </div>
+            <div class="display-raw-caps">
+              ${rawCaps}
+            </div>
+          </div>
+        `;
+        table.appendChild(row);
+      });
+
+      if (exceptionState.error) {
+        const note = document.createElement('p');
+        note.className = 'note';
+        note.textContent = `例外JSONを読めません: ${exceptionState.error}`;
+        table.appendChild(note);
+      }
+    }
+    const toggle = document.querySelector('[data-theme-toggle]');
+    let theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', theme);
+    toggle.addEventListener('click', () => {
+      theme = theme === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', theme);
+    });
+
+    document.getElementById('convertBtn').addEventListener('click', render);
+    document.getElementById('sampleBtn').addEventListener('click', () => {
+      document.getElementById('inputText').value = sampleText;
+      render();
+    });
+    document.getElementById('clearBtn').addEventListener('click', () => {
+      document.getElementById('inputText').value = '';
+      render();
+    });
+    document.getElementById('inputText').addEventListener('input', render);
+    document.getElementById('exceptions').addEventListener('input', render);
+    render();
+  </script>
+</body>
+</html>

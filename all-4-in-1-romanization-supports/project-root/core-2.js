@@ -4,6 +4,12 @@ const settings = {
   maxLength: 32,
 };
 
+const NON_JP_LATIN_WORDS = new Set([
+  'english',
+  'boat',
+  'no',
+]);
+
 function normalizeMaxLength(value) {
   const n = Number(value);
 
@@ -94,7 +100,9 @@ function splitSimpleRomanMoras(normalized) {
       continue;
     }
 
-    const tri = rest.match(/^(sh|ch|ky|gy|ny|hy|my|ry|py|by|j)([aeiou])/);
+    const tri = rest.match(
+      /^(sh|ch|ky|gy|ny|hy|my|ry|py|by|j)([aeiou])/
+    );
     if (tri) {
       result.push(tri[0]);
       i += tri[0].length;
@@ -242,7 +250,7 @@ function analyzeWord(word) {
     };
   }
 
-  if (normalized === 'english' || normalized === 'boat') {
+  if (NON_JP_LATIN_WORDS.has(normalized)) {
     return {
       raw,
       normalized,
@@ -272,7 +280,9 @@ function analyzeWord(word) {
     representativeKey: rep.representativeKey,
     tokens,
     moras,
-    result: rep.matched ? rep.result : defaultConvertFromNormalized(normalized),
+    result: rep.matched
+      ? rep.result
+      : defaultConvertFromNormalized(normalized),
     note: rep.matched ? rep.note : '一般モーラ変換を適用',
   };
 }
@@ -367,7 +377,16 @@ function convertText(text) {
     };
   });
 
-  function isApplicableWord(item) {
+  function isSkippableContextToken(item) {
+    return !!(
+      item &&
+      (item.kind === 'EMPTY' ||
+        item.kind === 'SPACE' ||
+        item.kind === 'PUNCT_ONLY')
+    );
+  }
+
+  function isApplicableJpRomajiToken(item) {
     return !!(
       item &&
       item.kind === 'WORD' &&
@@ -377,54 +396,39 @@ function convertText(text) {
     );
   }
 
-  function findPreviousWord(index) {
-    for (let i = index - 1; i >= 0; i--) {
+  function findPreviousMeaningfulToken(index) {
+    for (let i = index - 1; i >= 0; i -= 1) {
       const item = analyzed[i];
-
-      if (!item || item.kind === 'EMPTY' || item.kind === 'SPACE') {
+      if (isSkippableContextToken(item)) {
         continue;
       }
-
-      if (item.kind === 'PUNCT_ONLY') {
-        continue;
-      }
-
-      if (item.kind === 'WORD') {
-        return item;
-      }
+      return item;
     }
-
     return null;
   }
 
-  function findNextWord(index) {
-    for (let i = index + 1; i < analyzed.length; i++) {
+  function findNextMeaningfulToken(index) {
+    for (let i = index + 1; i < analyzed.length; i += 1) {
       const item = analyzed[i];
-
-      if (!item || item.kind === 'EMPTY' || item.kind === 'SPACE') {
+      if (isSkippableContextToken(item)) {
         continue;
       }
-
-      if (item.kind === 'PUNCT_ONLY') {
-        continue;
-      }
-
-      if (item.kind === 'WORD') {
-        return item;
-      }
+      return item;
     }
-
     return null;
   }
 
   function hasAdjacentApplicableWord(index) {
-    const prev = findPreviousWord(index);
-    const next = findNextWord(index);
+    const prev = findPreviousMeaningfulToken(index);
+    const next = findNextMeaningfulToken(index);
 
-    return isApplicableWord(prev) || isApplicableWord(next);
+    return (
+      isApplicableJpRomajiToken(prev) ||
+      isApplicableJpRomajiToken(next)
+    );
   }
 
-  for (let i = 0; i < analyzed.length; i++) {
+  for (let i = 0; i < analyzed.length; i += 1) {
     const item = analyzed[i];
 
     if (item.kind !== 'WORD') {

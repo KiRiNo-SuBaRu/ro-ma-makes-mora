@@ -2,6 +2,11 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getGlobalRepresentativeIndex = getGlobalRepresentativeIndex;
 exports.applyLongTokenPolicy = applyLongTokenPolicy;
+exports.isSkippableContextToken = isSkippableContextToken;
+exports.isApplicableJpRomajiToken = isApplicableJpRomajiToken;
+exports.findPreviousMeaningfulToken = findPreviousMeaningfulToken;
+exports.findNextMeaningfulToken = findNextMeaningfulToken;
+exports.applyContextualDisplayAdjustments = applyContextualDisplayAdjustments;
 exports.getImplementationVersion = getImplementationVersion;
 exports.convertText = convertText;
 const tokenize_js_1 = require("./tokenize.js");
@@ -59,6 +64,100 @@ function applyLongTokenPolicy(token, maxTokenLength) {
     };
 }
 /**
+ * 文脈上スキップ可能なトークンかどうかを判定する。
+ *
+ * no 文脈補正では、SPACE と PUNCT を飛ばして
+ * 前後の意味的なトークンを探索する。
+ *
+ * @param token 判定対象トークン
+ * @returns スキップ可能なら true
+ */
+function isSkippableContextToken(token) {
+    return !!(token &&
+        (token.kind === 'SPACE' || token.kind === 'PUNCT'));
+}
+/**
+ * JP_ROMAJI かつ APPLICABLE なトークンかどうかを判定する。
+ *
+ * @param token 判定対象トークン
+ * @returns 条件を満たすなら true
+ */
+function isApplicableJpRomajiToken(token) {
+    return !!(token &&
+        token.kind === 'JP_ROMAJI' &&
+        token.scope === 'APPLICABLE');
+}
+/**
+ * 指定位置より前方で、文脈上意味を持つ最初のトークンを返す。
+ *
+ * SPACE / PUNCT は読み飛ばす。
+ *
+ * @param tokens 解析済みトークン列
+ * @param startIndex 起点インデックス
+ * @returns 見つかったトークン。なければ undefined
+ */
+function findPreviousMeaningfulToken(tokens, startIndex) {
+    for (let i = startIndex - 1; i >= 0; i -= 1) {
+        const token = tokens[i];
+        if (isSkippableContextToken(token)) {
+            continue;
+        }
+        return token;
+    }
+    return undefined;
+}
+/**
+ * 指定位置より後方で、文脈上意味を持つ最初のトークンを返す。
+ *
+ * SPACE / PUNCT は読み飛ばす。
+ *
+ * @param tokens 解析済みトークン列
+ * @param startIndex 起点インデックス
+ * @returns 見つかったトークン。なければ undefined
+ */
+function findNextMeaningfulToken(tokens, startIndex) {
+    for (let i = startIndex + 1; i < tokens.length; i += 1) {
+        const token = tokens[i];
+        if (isSkippableContextToken(token)) {
+            continue;
+        }
+        return token;
+    }
+    return undefined;
+}
+/**
+ * token 列に対して、文脈依存の表示補正を適用する。
+ *
+ * 現在は LATIN_WORD の "no" についてのみ扱い、
+ * 前後の意味的トークンに JP_ROMAJI + APPLICABLE が存在する場合は
+ * output を "No" に補正する。
+ *
+ * @param tokens 表示分類後のトークン列
+ * @returns 文脈補正後のトークン列
+ */
+function applyContextualDisplayAdjustments(tokens) {
+    return tokens.map((token, index) => {
+        if (token.kind !== 'LATIN_WORD' ||
+            token.raw.toLowerCase() !== 'no') {
+            return token;
+        }
+        const prev = findPreviousMeaningfulToken(tokens, index);
+        const next = findNextMeaningfulToken(tokens, index);
+        if (isApplicableJpRomajiToken(prev) ||
+            isApplicableJpRomajiToken(next)) {
+            return {
+                ...token,
+                output: 'No',
+                decision: {
+                    ...token.decision,
+                    note: 'JP_ROMAJI 隣接文脈により "no" を "No" として表示した',
+                },
+            };
+        }
+        return token;
+    });
+}
+/**
  * 実装バージョン文字列を返す。
  *
  * @returns 実装バージョン
@@ -69,7 +168,8 @@ function getImplementationVersion() {
 /**
  * 入力文字列を、すばる式ローマ字モーラ表記へ変換する。
  *
- * 処理は tokenize → mora → long-token policy → classify → join の順で行い、
+ * 処理は tokenize → mora → long-token policy → classify →
+ * contextual-adjustment → join の順で行い、
  * 最終的な出力文字列、トークン列、実行メタ情報を返す。
  *
  * @param input 変換対象の入力文字列
@@ -77,20 +177,16 @@ function getImplementationVersion() {
  * @returns 変換結果
  */
 async function convertText(input, options = {}) {
-    // 既定値を補完する
     const guidelineVersion = options.guidelineVersion ?? '3.0';
     const fieldType = options.fieldType ?? 'body';
     const maxTokenLength = options.maxTokenLength ?? 128;
-    // 代表語インデックスを取得する
     const repIndex = await getGlobalRepresentativeIndex(guidelineVersion);
-    // tokenize -> mora -> long-token policy -> classify の順に処理する
     let tokens = (0, tokenize_js_1.tokenizeForMoraAnalysis)(input, fieldType);
     tokens = tokens.map(mora_js_1.buildMoraForToken);
     tokens = tokens.map((token) => applyLongTokenPolicy(token, maxTokenLength));
     tokens = tokens.map((token) => (0, classify_js_1.classifyDisplayForToken)(token, repIndex));
-    // 各トークンの出力を連結して最終文字列を得る
+    tokens = applyContextualDisplayAdjustments(tokens);
     const output = tokens.map((token) => token.output).join('');
-    // 出力と実行メタ情報を返す
     return {
         input,
         output,

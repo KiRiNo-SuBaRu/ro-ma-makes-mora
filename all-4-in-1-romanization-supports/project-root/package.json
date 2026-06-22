@@ -1,13 +1,6 @@
 {
-  "name": "subaru-roma-mora-web-lite",
-  "version": "0.0.1",
-  "private": true,
-  "type": "commonjs",
-  "bin": {
-    "subaru-roma-mora": "./cli.js"
-  },
   "scripts": {
-    "test": "node --test",
-    "cli": "node cli.js"
+    "build": "tsc -p tsconfig.json",
+    "test": "node --test dist/**/*.test.js test/**/*.test.js"
   }
 }

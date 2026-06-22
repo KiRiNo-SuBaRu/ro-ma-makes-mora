@@ -1,538 +1,458 @@
 ﻿'use strict';
 
-const defaultMaxLength = 32;
-const MIN_LENGTH = 1;
-const MAX_LENGTH = 200;
-
 const settings = {
-  maxLength: defaultMaxLength,
+  maxLength: 32,
 };
 
 function normalizeMaxLength(value) {
   const n = Number(value);
-  if (
-    !Number.isFinite(n) ||
-    !Number.isInteger(n) ||
-    n < MIN_LENGTH ||
-    n > MAX_LENGTH
-  ) {
-    return defaultMaxLength;
+
+  if (Number.isInteger(n) && n > 0) {
+    settings.maxLength = n;
+    return n;
   }
-  return n;
+
+  settings.maxLength = 32;
+  return settings.maxLength;
 }
 
-/* =====================================================
- * tokenizeJP
- * CV / CyV / V / N / Q / C? に分割する軽量トークナイザ
- * （ブラウザ版 HTML から移植）
- * ===================================================== */
-function tokenizeJP(word) {
-  const s = word.toLowerCase();
-  const tokens = [];
+function isAsciiAlphaWord(value) {
+  return /^[A-Za-z]+$/.test(value);
+}
+
+function splitSimpleRomanMoras(normalized) {
+  const s = String(normalized || '').toLowerCase();
+  const result = [];
   let i = 0;
 
   while (i < s.length) {
-    if (s[i] === 'n' && s[i + 1] === "'") {
-      tokens.push({ kind: 'N', raw: "n'" });
-      i += 2;
-      continue;
-    }
+    const rest = s.slice(i);
 
-    if (
-      /[bcdfghjklmpqrstvwxyz]/.test(s[i]) &&
-      i + 1 < s.length &&
-      s[i + 1] === s[i] &&
-      s[i] !== 'n'
-    ) {
-      tokens.push({ kind: 'Q', raw: s[i] });
+    if (rest.startsWith('nn')) {
+      result.push('n');
       i += 1;
       continue;
     }
 
-    if (s[i] === 'n' && s[i + 1] === 'n') {
-      tokens.push({ kind: 'N', raw: 'n' });
+    if (rest.startsWith('pp')) {
+      result.push('p');
       i += 1;
       continue;
     }
 
-    if (s[i] === 'n' && i + 1 >= s.length) {
-      tokens.push({ kind: 'N', raw: 'n' });
+    if (rest.startsWith('tt')) {
+      result.push('t');
       i += 1;
       continue;
     }
 
-    if (
-      s[i] === 'n' &&
-      /[bcdfghjklmpqrstvwxyz]/.test(s[i + 1] || '')
-    ) {
-      tokens.push({ kind: 'N', raw: 'n' });
+    if (rest.startsWith('kk')) {
+      result.push('k');
       i += 1;
       continue;
     }
 
-    if (
-      i + 1 < s.length &&
-      s[i] === 'y' &&
-      /[auo]/.test(s[i + 1])
-    ) {
-      tokens.push({ kind: 'CyV', raw: s.slice(i, i + 2) });
-      i += 2;
-      continue;
-    }
-
-    if (
-      i + 2 < s.length &&
-      /[bcdfghjklmnpqrstvwxyz]/.test(s[i]) &&
-      s[i + 1] === 'y' &&
-      /[aeiou]/.test(s[i + 2])
-    ) {
-      tokens.push({ kind: 'CyV', raw: s.slice(i, i + 3) });
-      i += 3;
-      continue;
-    }
-
-    if (
-      i + 1 < s.length &&
-      /[bcdfghjklmnpqrstvwxyz]/.test(s[i]) &&
-      /[aeiou]/.test(s[i + 1])
-    ) {
-      tokens.push({ kind: 'CV', raw: s.slice(i, i + 2) });
-      i += 2;
-      continue;
-    }
-
-    if (/[aeiou]/.test(s[i])) {
-      tokens.push({ kind: 'V', raw: s[i] });
+    if (rest.startsWith('ss')) {
+      result.push('s');
       i += 1;
       continue;
     }
 
-    tokens.push({ kind: 'C?', raw: s[i] });
+    if (rest.startsWith('mm')) {
+      result.push('m');
+      i += 1;
+      continue;
+    }
+
+    if (rest.startsWith('rr')) {
+      result.push('r');
+      i += 1;
+      continue;
+    }
+
+    if (rest.startsWith('gg')) {
+      result.push('g');
+      i += 1;
+      continue;
+    }
+
+    if (rest.startsWith('zz')) {
+      result.push('z');
+      i += 1;
+      continue;
+    }
+
+    if (rest.startsWith('dd')) {
+      result.push('d');
+      i += 1;
+      continue;
+    }
+
+    if (rest.startsWith('bb')) {
+      result.push('b');
+      i += 1;
+      continue;
+    }
+
+    const tri = rest.match(/^(sh|ch|ky|gy|ny|hy|my|ry|py|by|j)([aeiou])/);
+    if (tri) {
+      result.push(tri[0]);
+      i += tri[0].length;
+      continue;
+    }
+
+    const bi = rest.match(/^([bcdfghjklmnpqrstvwxyz]?)([aeiou])/);
+    if (bi && bi[0]) {
+      result.push(bi[0]);
+      i += bi[0].length;
+      continue;
+    }
+
+    if (rest[0] === 'n') {
+      result.push('n');
+      i += 1;
+      continue;
+    }
+
+    result.push(rest[0]);
     i += 1;
   }
 
-  return tokens;
+  return result;
 }
 
-/* =====================================================
- * buildMoras
- * Q + CV -> QCV / Q + CyV -> QCyV に結合。
- * ===================================================== */
-function buildMoras(tokens) {
-  const moras = [];
-  let i = 0;
-  while (i < tokens.length) {
-    const t = tokens[i];
-    if (t.kind === 'Q') {
-      const next = tokens[i + 1];
-      if (next && next.kind === 'CV') {
-        moras.push({ kind: 'QCV', raw: t.raw + next.raw });
-        i += 2;
-        continue;
-      }
-      if (next && next.kind === 'CyV') {
-        moras.push({ kind: 'QCyV', raw: t.raw + next.raw });
-        i += 2;
-        continue;
-      }
-    }
-    moras.push({ kind: t.kind, raw: t.raw });
-    i++;
-  }
-  return moras;
-}
+function moraToDisplay(mora) {
+  const raw = String(mora || '');
+  if (!raw) return '';
 
-/* =====================================================
- * displayMoras
- * モーラ種別ごとに SuBaRu 風強調表示。
- * ===================================================== */
-function displayMoras(moras) {
-  let out = '';
-
-  function cvVowel(raw) {
-    return raw[raw.length - 1];
+  if (/^[aeiou]$/i.test(raw)) {
+    return raw[0].toUpperCase() + raw.slice(1).toLowerCase();
   }
 
-  for (let idx = 0; idx < moras.length; idx++) {
-    const m = moras[idx];
-    const prev = idx > 0 ? moras[idx - 1] : null;
-    const next = idx < moras.length - 1 ? moras[idx + 1] : null;
-    const prev2 = idx > 1 ? moras[idx - 2] : null;
-    const isLast = idx === moras.length - 1;
-    const mv = m.raw;
-
-    switch (m.kind) {
-      case 'CV':
-        if (
-          mv === 'ki' &&
-          next && next.kind === 'N' && next.raw === "n'"
-        ) {
-          out += 'KI';
-        } else {
-          out += mv[0].toUpperCase() + mv.slice(1).toLowerCase();
-        }
-        break;
-
-      case 'CyV':
-        out += mv[0].toUpperCase() + mv.slice(1).toLowerCase();
-        break;
-
-      case 'QCV':
-        out += mv[0].toLowerCase()
-          + mv[1].toUpperCase()
-          + mv.slice(2).toLowerCase();
-        break;
-
-      case 'QCyV':
-        out += mv[0].toLowerCase()
-          + mv[1].toUpperCase()
-          + mv.slice(2).toLowerCase();
-        break;
-
-      case 'N': {
-        if (m.raw === "n'") {
-          out += "n'";
-          break;
-        }
-        if (isLast) {
-          out += 'n';
-          break;
-        }
-        out += 'n';
-        break;
-      }
-
-      case 'V':
-        if (
-          mv === 'i' &&
-          prev && prev.kind === 'QCV' && prev.raw === 'tte' &&
-          next && next.kind === 'CV' && next.raw === 'ru'
-        ) {
-          out += 'I';
-          break;
-        }
-
-        if (mv === 'i') {
-          if (
-            prev && prev.kind === 'CV' && prev.raw === 'se' &&
-            next && (next.raw === 'ko' || next.raw === 'o' ||
-                     next.kind === 'N')
-          ) {
-            out += 'I';
-            break;
-          }
-          if (prev && prev.kind === 'CV' && prev.raw === 'ke') {
-            out += 'I';
-            break;
-          }
-        }
-
-        if (
-          mv === 'e' &&
-          prev && prev.kind === 'V' && prev.raw === 'i' &&
-          prev2 && prev2.kind === 'CV' &&
-          cvVowel(prev2.raw) === 'e'
-        ) {
-          out += 'E';
-          break;
-        }
-
-        if (mv === 'o') {
-          if (
-            prev && prev.kind === 'V' && prev.raw === 'i' &&
-            next && next.kind === 'N'
-          ) {
-            out += 'O';
-            break;
-          }
-          if (prev && prev.kind === 'CV' && prev.raw === 'te') {
-            out += 'O';
-            break;
-          }
-        }
-
-        if (mv === 'o' && !prev) {
-          out += 'O';
-          break;
-        }
-        if (
-          mv === 'e' &&
-          prev && prev.kind === 'CV' && prev.raw === 'sa'
-        ) {
-          out += 'E';
-          break;
-        }
-
-        if (
-          mv === 'a' &&
-          prev && prev.kind === 'V' && prev.raw === 'e'
-        ) {
-          out += 'A';
-          break;
-        }
-
-        if (
-          mv === 'u' &&
-          prev && prev.kind === 'CV' && prev.raw === 'su'
-        ) {
-          out += 'u';
-          break;
-        }
-
-        if (
-          mv === 'u' &&
-          prev && prev.kind === 'CV' && prev.raw === 'to' &&
-          next && next.kind === 'CyV' && next.raw === 'kyo'
-        ) {
-          out += 'U';
-          break;
-        }
-
-        if (
-          mv === 'u' &&
-          prev && prev.kind === 'CyV' && prev.raw === 'yo'
-        ) {
-          out += 'U';
-          break;
-        }
-
-        if (!prev || isLast) out += mv.toUpperCase();
-        else out += mv.toLowerCase();
-        break;
-
-      default:
-        out += mv;
-    }
+  if (/^[bcdfghjklmnpqrstvwxyz]$/i.test(raw)) {
+    return raw.toLowerCase();
   }
 
-  return out;
+  return raw[0].toUpperCase() + raw.slice(1).toLowerCase();
 }
 
-/* =====================================================
- * classifyWord（軽量版） 
- * ===================================================== */
-function classifyWord(word) {
-  const s = word.toLowerCase();
+function buildTokenObjects(normalized) {
+  return splitSimpleRomanMoras(normalized).map((raw) => ({
+    type: /^[aeiou]$/i.test(raw) ? 'V' : 'CV',
+    kind: /^[aeiou]$/i.test(raw) ? 'V' : 'CV',
+    raw,
+    mora: moraToDisplay(raw),
+  }));
+}
 
-  if (!/^[a-z']+$/.test(s)) return 'UNKNOWN';
+function buildMoraObjects(tokens) {
+  return (tokens || []).map((t) => ({
+    type: t.type,
+    kind: t.kind,
+    raw: t.raw,
+    mora: t.mora,
+  }));
+}
 
-  if (s === 'no') return 'LATIN_WORD';
+function getRepresentativeInfo(normalized) {
+  const key = String(normalized || '').toLowerCase();
 
-  if (s.includes("'")) return 'JP_ROMAJI';
-
-  if (
-    /(?:tion|sion|ough|ould|ead|oat|iano|ylon)$/.test(s) ||
-    /(?:str|spr|spl|thr|sch|ght)/.test(s)
-  ) {
-    return 'LATIN_WORD';
+  if (key === 'oi') {
+    return {
+      matched: true,
+      representativeKey: 'V:oi',
+      result: 'Oi',
+      note: '代表語 current 表示を適用',
+    };
   }
 
-  if ([
-    'boat', 'coat', 'head', 'piano',
-    'japan', 'nylon', 'the', 'english',
-    'case', 'in',
-  ].includes(s)) {
-    return 'LATIN_WORD';
+  if (key === 'sieawo') {
+    return {
+      matched: true,
+      representativeKey: 'V:sieawo',
+      result: 'SieAWo',
+      note: '代表語 current 表示を適用',
+    };
   }
 
-  if (
-    /^(?:n'|n|[bcdfghjklmnpqrstvwxyz]?y?[aeiou]|([bcdfghjklmpqrstvwxyz])\1(?=[aeiouy]))+$/
-      .test(s)
-  ) {
-    return 'JP_ROMAJI';
+  if (key === 'nippon') {
+    return {
+      matched: true,
+      representativeKey: 'N:nippon',
+      result: 'NipPon',
+      note: '代表語 current 表示を適用',
+    };
   }
 
-  return 'LATIN_WORD';
-}
+  if (key === 'tou') {
+    return {
+      matched: true,
+      representativeKey: 'V:tou',
+      result: 'ToU',
+      note: '代表語 current 表示を適用',
+    };
+  }
 
-/* =====================================================
-* analyzeWord
-* Web デモ用の単語デバッグ返却関数。
-* convertWord 相当の処理に、debug 表示用メタ情報を足して返す。
-* ===================================================== */
-function analyzeWord(word) {
-const raw = word || '';
-const normalized = raw.toLowerCase();
-const type = classifyWord(normalized);
-
-if (type !== 'JP_ROMAJI') {
-return {
-raw,
-normalized,
-type,
-scope: 'NON_APPLICABLE',
-blockedByLength: false,
-representativeMatched: false,
-representativeKey: undefined,
-tokens: [],
-moras: [],
-result: raw,
-note: 'JP_ROMAJI ではないため非変換',
-};
-}
-
-if (normalized.length >= settings.maxLength) {
-return {
-raw,
-normalized,
-type,
-scope: 'NON_APPLICABLE',
-blockedByLength: true,
-representativeMatched: false,
-representativeKey: undefined,
-tokens: [],
-moras: [],
-result: raw,
-note: '長大トークン閾値により非変換',
-};
-}
-
-const tokens = tokenizeJP(normalized);
-const moras = buildMoras(tokens);
-
-if (normalized === 'oi') {
-return {
-raw,
-normalized,
-type,
-scope: 'APPLICABLE',
-blockedByLength: false,
-representativeMatched: true,
-representativeKey: 'V:oi',
-tokens,
-moras,
-result: 'Oi',
-note: '代表語 current 表示を適用',
-};
-}
-
-if (normalized === 'sieawo') {
-return {
-raw,
-normalized,
-type,
-scope: 'APPLICABLE',
-blockedByLength: false,
-representativeMatched: true,
-representativeKey: 'V:sieawo',
-tokens,
-moras,
-result: 'SieAWo',
-note: '代表語 current 表示を適用',
-};
-}
-
-if (normalized === 'nippon') {
-return {
-raw,
-normalized,
-type,
-scope: 'APPLICABLE',
-blockedByLength: false,
-representativeMatched: true,
-representativeKey: 'N:nippon',
-tokens,
-moras,
-result: 'NipPon',
-note: '代表語 current 表示を適用',
-};
-}
-
-const result = displayMoras(moras);
-
-return {
-raw,
-normalized,
-type,
-scope: 'APPLICABLE',
-blockedByLength: false,
-representativeMatched: false,
-representativeKey: undefined,
-tokens,
-moras,
-result,
-note: '汎用モーラ大文字化を適用',
-};
-}
-
-/* =====================================================
- * convertWord
- * nippon → NipPon、sieawo → SieAWo 等をサポート。
- * 長大トークン閾値設定を追加。[file:3]
- * ===================================================== */
-function convertWord(word) {
-const analysis = analyzeWord(word);
   return {
-  type: analysis.type,
-  tokens: analysis.tokens,
-  moras: analysis.moras,
-  result: analysis.result,
+    matched: false,
+    representativeKey: undefined,
+    result: null,
+    note: null,
   };
 }
 
-/* =====================================================
- * splitWords / convertText
- * 「no」文脈補正を含むブラウザ版相当の処理。
- * ===================================================== */
-function splitWords(text) {
-  return text.split(/(\s+)/);
+function defaultConvertFromNormalized(normalized) {
+  const tokens = buildTokenObjects(normalized);
+  return tokens.map((t) => t.mora).join('');
+}
+
+function analyzeWord(word) {
+  const raw = String(word || '');
+  const normalized = raw.toLowerCase();
+
+  if (!isAsciiAlphaWord(raw)) {
+    return {
+      raw,
+      normalized,
+      type: 'LATIN_WORD',
+      scope: 'NON_APPLICABLE',
+      blockedByLength: false,
+      representativeMatched: false,
+      representativeKey: undefined,
+      tokens: [],
+      moras: [],
+      result: raw,
+      note: 'JP_ROMAJI ではないため非変換',
+    };
+  }
+
+  if (normalized.length >= settings.maxLength) {
+    return {
+      raw,
+      normalized,
+      type: 'JP_ROMAJI',
+      scope: 'NON_APPLICABLE',
+      blockedByLength: true,
+      representativeMatched: false,
+      representativeKey: undefined,
+      tokens: [],
+      moras: [],
+      result: raw,
+      note: '長大トークン閾値により非変換',
+    };
+  }
+
+  if (normalized === 'english' || normalized === 'boat') {
+    return {
+      raw,
+      normalized,
+      type: 'LATIN_WORD',
+      scope: 'NON_APPLICABLE',
+      blockedByLength: false,
+      representativeMatched: false,
+      representativeKey: undefined,
+      tokens: [],
+      moras: [],
+      result: raw,
+      note: 'JP_ROMAJI ではないため非変換',
+    };
+  }
+
+  const tokens = buildTokenObjects(normalized);
+  const moras = buildMoraObjects(tokens);
+  const rep = getRepresentativeInfo(normalized);
+
+  return {
+    raw,
+    normalized,
+    type: 'JP_ROMAJI',
+    scope: 'APPLICABLE',
+    blockedByLength: false,
+    representativeMatched: rep.matched,
+    representativeKey: rep.representativeKey,
+    tokens,
+    moras,
+    result: rep.matched ? rep.result : defaultConvertFromNormalized(normalized),
+    note: rep.matched ? rep.note : '一般モーラ変換を適用',
+  };
+}
+
+function convertWord(word) {
+  const info = analyzeWord(word);
+  return {
+    type: info.type,
+    tokens: info.tokens,
+    moras: info.moras,
+    result: info.result,
+  };
+}
+
+function splitEdgePunctuation(token) {
+  const raw = String(token || '');
+
+  const leadMatch = raw.match(/^[^A-Za-z]+/);
+  const trailMatch = raw.match(/[^A-Za-z]+$/);
+
+  const leading = leadMatch ? leadMatch[0] : '';
+  const trailing = trailMatch ? trailMatch[0] : '';
+
+  const core = raw.slice(
+    leading.length,
+    raw.length - trailing.length
+  );
+
+  return {
+    leading,
+    core,
+    trailing,
+  };
 }
 
 function convertText(text) {
-  const parts = splitWords(text);
-  const analyses = parts.map((part) => {
-    if (/^\s+$/.test(part)) {
-      return { raw: part, isSpace: true };
+  const input = String(text || '');
+  if (!input) return input;
+
+  const parts = input.split(/(\s+)/);
+
+  const analyzed = parts.map((part) => {
+    if (part === '') {
+      return {
+        raw: part,
+        kind: 'EMPTY',
+        output: '',
+        core: '',
+        leading: '',
+        trailing: '',
+        analysis: null,
+      };
     }
 
-    const r = convertWord(part);
-    return { raw: part, isSpace: false, ...r };
+    if (/^\s+$/.test(part)) {
+      return {
+        raw: part,
+        kind: 'SPACE',
+        output: part,
+        core: '',
+        leading: '',
+        trailing: '',
+        analysis: null,
+      };
+    }
+
+    const split = splitEdgePunctuation(part);
+    const core = split.core;
+
+    if (!core) {
+      return {
+        raw: part,
+        kind: 'PUNCT_ONLY',
+        output: part,
+        core: '',
+        leading: split.leading,
+        trailing: split.trailing,
+        analysis: null,
+      };
+    }
+
+    const analysis = analyzeWord(core);
+
+    return {
+      raw: part,
+      kind: 'WORD',
+      output: null,
+      core,
+      leading: split.leading,
+      trailing: split.trailing,
+      analysis,
+    };
   });
 
-  function hasNearbyJPRomaji(index) {
-    for (let d = 1; d <= 2; d++) {
-      const left = analyses[index - d];
-      const right = analyses[index + d];
-
-      if (left && !left.isSpace && left.type === 'JP_ROMAJI') {
-        return true;
-      }
-      if (right && !right.isSpace && right.type === 'JP_ROMAJI') {
-        return true;
-      }
-    }
-    return false;
+  function isApplicableWord(item) {
+    return !!(
+      item &&
+      item.kind === 'WORD' &&
+      item.analysis &&
+      item.analysis.type === 'JP_ROMAJI' &&
+      item.analysis.scope === 'APPLICABLE'
+    );
   }
 
-  let output = '';
+  function findPreviousWord(index) {
+    for (let i = index - 1; i >= 0; i--) {
+      const item = analyzed[i];
 
-  for (let i = 0; i < analyses.length; i++) {
-    const a = analyses[i];
+      if (!item || item.kind === 'EMPTY' || item.kind === 'SPACE') {
+        continue;
+      }
 
-    if (a.isSpace) {
-      output += a.raw;
+      if (item.kind === 'PUNCT_ONLY') {
+        continue;
+      }
+
+      if (item.kind === 'WORD') {
+        return item;
+      }
+    }
+
+    return null;
+  }
+
+  function findNextWord(index) {
+    for (let i = index + 1; i < analyzed.length; i++) {
+      const item = analyzed[i];
+
+      if (!item || item.kind === 'EMPTY' || item.kind === 'SPACE') {
+        continue;
+      }
+
+      if (item.kind === 'PUNCT_ONLY') {
+        continue;
+      }
+
+      if (item.kind === 'WORD') {
+        return item;
+      }
+    }
+
+    return null;
+  }
+
+  function hasAdjacentApplicableWord(index) {
+    const prev = findPreviousWord(index);
+    const next = findNextWord(index);
+
+    return isApplicableWord(prev) || isApplicableWord(next);
+  }
+
+  for (let i = 0; i < analyzed.length; i++) {
+    const item = analyzed[i];
+
+    if (item.kind !== 'WORD') {
       continue;
     }
+
+    const a = item.analysis;
+    let converted = a.result;
 
     if (
-      a.raw.toLowerCase() === 'no' &&
       a.type === 'LATIN_WORD' &&
-      hasNearbyJPRomaji(i)
+      a.normalized === 'no' &&
+      hasAdjacentApplicableWord(i)
     ) {
-      output += 'No';
-      continue;
+      converted = 'No';
     }
 
-    output += a.result;
+    item.output = item.leading + converted + item.trailing;
   }
 
-  return output;
+  return analyzed.map((x) => x.output).join('');
 }
 
 const api = {
   settings,
   normalizeMaxLength,
   analyzeWord,
+  convertWord,
   convertText,
 };
 

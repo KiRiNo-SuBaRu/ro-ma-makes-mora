@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>すばる式ローマ字モーラ強調装飾 v3.2 デモ</title>
+  <style>
+    :root, [data-theme="light"] {
+      --color-bg: #f7f6f2;
+      --color-surface: #f9f8f5;
+      --color-surface-2: #fbfbf9;
+      --color-surface-offset: #f3f0ec;
+      --color-divider: #dcd9d5;
+      --color-border: #d4d1ca;
+      --color-text: #28251d;
+      --color-text-muted: #7a7974;
+      --color-text-faint: #bab9b4;
+      --color-primary: #01696f;
+      --color-primary-hover: #0c4e54;
+      --color-primary-hl: #cedcd8;
+      --color-success: #437a22;
+      --color-success-hl: #d4dfcc;
+      --color-warning: #964219;
+      --color-warning-hl: #ddcfc6;
+      --color-error: #a12c7b;
+      --color-error-hl: #e0ced7;
+      --shadow-sm: 0 1px 2px oklch(0.2 0.01 80 / 0.06);
+      --shadow-md: 0 4px 12px oklch(0.2 0.01 80 / 0.08);
+      --radius-sm: 0.375rem;
+      --radius-md: 0.5rem;
+      --radius-lg: 0.75rem;
+      --space-1: 0.25rem;
+      --space-2: 0.5rem;
+      --space-3: 0.75rem;
+      --space-4: 1rem;
+      --space-5: 1.25rem;
+      --space-6: 1.5rem;
+      --space-8: 2rem;
+      --text-xs: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
+      --text-sm: clamp(0.875rem, 0.8rem + 0.35vw, 1rem);
+      --text-base: clamp(1rem, 0.95rem + 0.25vw, 1.125rem);
+      --text-lg: clamp(1.125rem, 1rem + 0.75vw, 1.5rem);
+      --transition: 180ms cubic-bezier(0.16, 1, 0.3, 1);
+      --font-body: 'Inter', 'Helvetica Neue', sans-serif;
+      --font-mono: 'JetBrains Mono', 'Cascadia Code', 'Consolas', monospace;
+    }
+
+    [data-theme="dark"] {
+      --color-bg: #171614;
+      --color-surface: #1c1b19;
+      --color-surface-2: #201f1d;
+      --color-surface-offset: #1d1c1a;
+      --color-divider: #262523;
+      --color-border: #393836;
+      --color-text: #cdccca;
+      --color-text-muted: #797876;
+      --color-text-faint: #5a5957;
+      --color-primary: #4f98a3;
+      --color-primary-hover: #227f8b;
+      --color-primary-hl: #313b3b;
+      --color-success: #6daa45;
+      --color-success-hl: #3a4435;
+      --color-warning: #bb653b;
+      --color-warning-hl: #564942;
+      --color-error: #d163a7;
+      --color-error-hl: #4c3d46;
+      --shadow-sm: 0 1px 2px oklch(0 0 0 / 0.2);
+      --shadow-md: 0 4px 12px oklch(0 0 0 / 0.3);
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+      scroll-behavior: smooth;
+    }
+
+    body {
+      min-height: 100dvh;
+      font-family: var(--font-body);
+      font-size: var(--text-base);
+      color: var(--color-text);
+      background: var(--color-bg);
+      line-height: 1.6;
+    }
+
+    a, button, input, textarea {
+      transition:
+        color var(--transition),
+        background var(--transition),
+        border-color var(--transition),
+        box-shadow var(--transition);
+    }
+
+    :focus-visible {
+      outline: 2px solid var(--color-primary);
+      outline-offset: 3px;
+      border-radius: var(--radius-sm);
+    }
+
+    h1, h2, h3, h4 {
+      line-height: 1.2;
+      text-wrap: balance;
+    }
+
+    .app-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--space-4) var(--space-6);
+      background: var(--color-surface);
+      border-bottom: 1px solid var(--color-border);
+      box-shadow: var(--shadow-sm);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .app-header h1 {
+      font-size: var(--text-lg);
+      font-weight: 600;
+    }
+
+    .subtitle {
+      font-size: var(--text-xs);
+      color: var(--color-text-muted);
+      margin-top: var(--space-1);
+    }
+
+    .theme-toggle {
+      background: none;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      padding: var(--space-2) var(--space-3);
+      cursor: pointer;
+      color: var(--color-text-muted);
+      font-size: var(--text-sm);
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+    }
+
+    .theme-toggle:hover {
+      background: var(--color-surface-offset);
+      color: var(--color-text);
+    }
+
+    .app-main {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: var(--space-8) var(--space-4);
+      display: grid;
+      gap: var(--space-8);
+    }
+
+    .card {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
+      overflow: hidden;
+    }
+
+    .card-header {
+      padding: var(--space-4) var(--space-6);
+      background: var(--color-surface-offset);
+      border-bottom: 1px solid var(--color-divider);
+    }
+
+    .card-header h2 {
+      font-size: var(--text-base);
+      font-weight: 600;
+    }
+
+    .card-header p {
+      font-size: var(--text-xs);
+      color: var(--color-text-muted);
+      margin-top: var(--space-1);
+    }
+
+    .card-body {
+      padding: var(--space-6);
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+      margin-bottom: var(--space-4);
+    }
+
+    .form-group:last-child {
+      margin-bottom: 0;
+    }
+
+    label {
+      font-size: var(--text-sm);
+      font-weight: 500;
+      color: var(--color-text-muted);
+    }
+
+    textarea,
+    input[type="text"],
+    input[type="number"] {
+      width: 100%;
+      padding: var(--space-3) var(--space-4);
+      background: var(--color-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      font-family: var(--font-mono);
+      font-size: var(--text-sm);
+      color: var(--color-text);
+      resize: vertical;
+    }
+
+    textarea:focus,
+    input:focus {
+      outline: none;
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px color-mix(
+        in oklch,
+        var(--color-primary) 15%,
+        transparent
+      );
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: var(--space-3);
+      align-items: end;
+    }
+
+    .maxlen-group {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+    }
+
+    .maxlen-group input {
+      width: 6rem;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-2);
+      padding: var(--space-3) var(--space-5);
+      border-radius: var(--radius-md);
+      font-size: var(--text-sm);
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      white-space: nowrap;
+    }
+
+    .btn-primary {
+      background: var(--color-primary);
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: var(--color-primary-hover);
+    }
+
+    .result-area {
+      margin-top: var(--space-5);
+      padding: var(--space-4);
+      background: var(--color-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+    }
+
+    .result-label {
+      font-size: var(--text-xs);
+      font-weight: 600;
+      color: var(--color-text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: var(--space-3);
+    }
+
+    .result-text {
+      font-family: var(--font-mono);
+      font-size: var(--text-base);
+      color: var(--color-text);
+      word-break: break-all;
+      min-height: 2.5rem;
+    }
+
+    .result-text.empty {
+      color: var(--color-text-faint);
+      font-style: italic;
+    }
+
+    .debug-empty {
+      color: var(--color-text-faint);
+      font-size: var(--text-sm);
+      font-style: italic;
+      padding: var(--space-4) 0;
+    }
+
+    .debug-summary-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: var(--text-sm);
+      margin-bottom: var(--space-5);
+    }
+
+    .debug-summary-table th,
+    .debug-summary-table td {
+      padding: var(--space-2) var(--space-3);
+      text-align: left;
+      border-bottom: 1px solid var(--color-divider);
+      vertical-align: top;
+    }
+
+    .debug-summary-table th {
+      font-weight: 500;
+      color: var(--color-text-muted);
+      white-space: nowrap;
+      width: 40%;
+    }
+
+    .debug-summary-table td {
+      font-family: var(--font-mono);
+      color: var(--color-text);
+      word-break: break-all;
+    }
+
+    .debug-summary-table tr:last-child th,
+    .debug-summary-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.1em 0.5em;
+      border-radius: 9999px;
+      font-size: var(--text-xs);
+      font-weight: 600;
+      font-family: var(--font-body);
+    }
+
+    .badge-true {
+      background: var(--color-success-hl);
+      color: var(--color-success);
+    }
+
+    .badge-false {
+      background: var(--color-surface-offset);
+      color: var(--color-text-muted);
+    }
+
+    .badge-scope-in {
+      background: var(--color-primary-hl);
+      color: var(--color-primary);
+    }
+
+    .badge-scope-out {
+      background: var(--color-warning-hl);
+      color: var(--color-warning);
+    }
+
+    .badge-blocked {
+      background: var(--color-error-hl);
+      color: var(--color-error);
+    }
+
+    .badge-result {
+      font-size: var(--text-base);
+      background: var(--color-primary-hl);
+      color: var(--color-primary);
+      font-family: var(--font-mono);
+      font-weight: 700;
+    }
+
+    .debug-section-title {
+      font-size: var(--text-xs);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--color-text-muted);
+      margin-bottom: var(--space-2);
+      padding-top: var(--space-4);
+      border-top: 1px solid var(--color-divider);
+    }
+
+    .debug-inline-view {
+      margin-bottom: var(--space-4);
+      padding: var(--space-3) var(--space-4);
+      background: var(--color-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      color: var(--color-text-muted);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .tokens-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-2);
+      margin-bottom: var(--space-4);
+    }
+
+    .token-chip {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      padding: var(--space-2) var(--space-3);
+      background: var(--color-surface-2);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      min-width: 3rem;
+    }
+
+    .chip-type {
+      font-size: var(--text-xs);
+      color: var(--color-text-faint);
+      font-family: var(--font-body);
+    }
+
+    .chip-raw {
+      font-size: var(--text-xs);
+      color: var(--color-text-muted);
+      font-family: var(--font-mono);
+    }
+
+    .chip-mora {
+      font-size: var(--text-sm);
+      font-weight: 700;
+      color: var(--color-primary);
+      font-family: var(--font-mono);
+    }
+
+    .moras-flow {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: var(--space-2);
+      padding: var(--space-3) var(--space-4);
+      background: var(--color-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      margin-bottom: var(--space-4);
+    }
+
+    .mora-pill {
+      padding: var(--space-1) var(--space-3);
+      background: var(--color-primary-hl);
+      color: var(--color-primary);
+      border-radius: 9999px;
+      font-family: var(--font-mono);
+      font-size: var(--text-sm);
+      font-weight: 600;
+    }
+
+    .mora-sep {
+      color: var(--color-text-faint);
+      font-size: var(--text-xs);
+      user-select: none;
+    }
+
+    .debug-details {
+      margin-top: var(--space-4);
+    }
+
+    .debug-details summary {
+      cursor: pointer;
+      font-size: var(--text-xs);
+      color: var(--color-text-muted);
+      padding: var(--space-2) 0;
+      user-select: none;
+    }
+
+    .debug-details summary:hover {
+      color: var(--color-text);
+    }
+
+    .debug-json-pre {
+      margin-top: var(--space-3);
+      padding: var(--space-4);
+      background: var(--color-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      color: var(--color-text);
+      white-space: pre;
+      overflow-x: auto;
+      max-height: 320px;
+      overflow-y: auto;
+    }
+
+    @media (max-width: 600px) {
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="app-header">
+    <div>
+      <h1>
+        すばる式ローマ字モーラ強調装飾
+        <span
+          style="color: var(--color-text-muted); font-weight: 400;"
+        >v3.x</span>
+      </h1>
+      <p class="subtitle">文章全体変換 &amp; 単語 Debug パネル</p>
+    </div>
+    <button
+      class="theme-toggle"
+      data-theme-toggle
+      aria-label="ダークモードに切り替え"
+      title="テーマ切り替え"
+    >
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        aria-hidden="true"
+      >
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+      </svg>
+      テーマ
+    </button>
+  </header>
+
+  <main class="app-main">
+    <section class="card" aria-labelledby="section-convert">
+      <div class="card-header">
+        <h2 id="section-convert">全文変換</h2>
+        <p>入力文全体を <code>convertText()</code> で変換します。</p>
+      </div>
+      <div class="card-body">
+        <div class="form-row">
+          <div class="form-group" style="margin-bottom: 0;">
+            <label for="input-text">入力テキスト</label>
+            <textarea
+              id="input-text"
+              rows="3"
+              placeholder="Sumutokoro Nippon ToU"
+              spellcheck="false"
+            >Sumutokoro Nippon ToU</textarea>
+          </div>
+
+          <div class="maxlen-group">
+            <label for="input-maxlen">最大長</label>
+            <input
+              type="number"
+              id="input-maxlen"
+              value="20"
+              min="1"
+              max="999"
+            >
+          </div>
+
+          <button
+            class="btn btn-primary"
+            id="btn-convert"
+            type="button"
+            style="align-self: flex-end;"
+          >変換</button>
+        </div>
+
+        <div class="result-area" id="result-area">
+          <p class="result-label">変換結果</p>
+          <p class="result-text empty" id="result-text">
+            まだ変換していません。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="section-debug">
+      <div class="card-header">
+        <h2 id="section-debug">単語 Debug</h2>
+        <p>
+          <code>analyzeWord()</code> の返却内容を構造化表示します。
+        </p>
+      </div>
+      <div class="card-body">
+        <div class="form-group">
+          <label for="input-word">単語デバッグ入力</label>
+          <div style="display: flex; gap: var(--space-3);">
+            <input
+              type="text"
+              id="input-word"
+              placeholder="例: Nippon"
+              spellcheck="false"
+              style="flex: 1;"
+            >
+            <button
+              class="btn btn-primary"
+              id="btn-analyze"
+              type="button"
+            >解析</button>
+          </div>
+        </div>
+
+        <div id="debug-panel">
+          <p class="debug-empty">
+            単語を入力して「解析」を押してください。
+          </p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="./core-2.js"></script>
+  <script>
+    (function () {
+      'use strict';
+
+      (function () {
+        var toggle = document.querySelector('[data-theme-toggle]');
+        var root = document.documentElement;
+        var dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var theme = dark ? 'dark' : 'light';
+
+        function applyTheme(t) {
+          theme = t;
+          root.setAttribute('data-theme', t);
+
+          if (toggle) {
+            toggle.setAttribute(
+              'aria-label',
+              t === 'dark'
+                ? 'ライトモードに切り替え'
+                : 'ダークモードに切り替え'
+            );
+
+            var icon = toggle.querySelector('svg path');
+            if (icon) {
+              icon.setAttribute(
+                'd',
+                t === 'dark'
+                  ? 'M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42M12 7a5 5 0 0 0 0 10 5 5 0 0 0 0-10z'
+                  : 'M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z'
+              );
+            }
+          }
+        }
+
+        applyTheme(theme);
+
+        if (toggle) {
+          toggle.addEventListener('click', function () {
+            applyTheme(theme === 'dark' ? 'light' : 'dark');
+          });
+        }
+      })();
+
+      function getAPI() {
+        if (typeof window.SubaruRomaMora !== 'undefined') {
+          return window.SubaruRomaMora;
+        }
+        return null;
+      }
+
+      var btnConvert = document.getElementById('btn-convert');
+      var inputText = document.getElementById('input-text');
+      var inputMaxlen = document.getElementById('input-maxlen');
+      var resultText = document.getElementById('result-text');
+
+      function doConvert() {
+        var api = getAPI();
+        if (!api) {
+          showError(resultText, 'core-2.js が読み込まれていません。');
+          return;
+        }
+
+        var text = inputText.value.trim();
+        var maxlen = parseInt(inputMaxlen.value, 10) || 20;
+        api.normalizeMaxLength(maxlen);
+
+        var out;
+        try {
+          out = api.convertText(text);
+        } catch (e) {
+          showError(resultText, 'エラー: ' + e.message);
+          return;
+        }
+
+        resultText.classList.remove('empty');
+        resultText.textContent = out;
+      }
+
+      btnConvert.addEventListener('click', doConvert);
+      inputText.addEventListener('keydown', function (e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+          doConvert();
+        }
+      });
+
+      var btnAnalyze = document.getElementById('btn-analyze');
+      var inputWord = document.getElementById('input-word');
+      var debugPanel = document.getElementById('debug-panel');
+
+      function doAnalyze() {
+        var api = getAPI();
+        if (!api) {
+          debugPanel.innerHTML =
+            '<p class="debug-empty" style="color:var(--color-error)">'
+            + 'core-2.js が読み込まれていません。</p>';
+          return;
+        }
+
+        var word = inputWord.value.trim();
+        if (!word) {
+          debugPanel.innerHTML =
+            '<p class="debug-empty">単語を入力してください。</p>';
+          return;
+        }
+
+        var result;
+        try {
+          result = api.analyzeWord(word);
+        } catch (e) {
+          debugPanel.innerHTML =
+            '<p class="debug-empty" style="color:var(--color-error)">'
+            + 'エラー: ' + esc(e.message) + '</p>';
+          return;
+        }
+
+        renderDebugPanel(result);
+      }
+
+      btnAnalyze.addEventListener('click', doAnalyze);
+      inputWord.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+          doAnalyze();
+        }
+      });
+
+      function renderDebugPanel(r) {
+        if (!r) {
+          debugPanel.innerHTML =
+            '<p class="debug-empty">結果が取得できませんでした。</p>';
+          return;
+        }
+
+        var html = '';
+        var tokens = r.tokens || [];
+        var moras = r.moras || [];
+        var simpleTokens = formatSimpleTokens(tokens);
+        var simpleMoras = formatSimpleMoras(moras);
+
+        var scopeBadge = (function () {
+          var s = String(r.scope || '');
+          if (/non|out/i.test(s)) {
+            return badge(s, 'badge-scope-out');
+          }
+          return badge(s, 'badge-scope-in');
+        })();
+
+        var blockedBadge = r.blockedByLength
+          ? badge('true (blocked)', 'badge-blocked')
+          : badge('false', 'badge-false');
+
+        var repBadge = r.representativeMatched
+          ? badge('true', 'badge-true')
+          : badge('false', 'badge-false');
+
+        var rows = [
+          ['raw', mono(esc(r.raw || '?'))],
+          ['normalized', mono(esc(r.normalized || '?'))],
+          ['type', mono(esc(r.type || '?'))],
+          ['scope', scopeBadge],
+          ['blockedByLength', blockedBadge],
+          ['representativeMatched', repBadge],
+          [
+            'representativeKey',
+            r.representativeKey
+              ? mono(esc(r.representativeKey))
+              : span('?', 'color:var(--color-text-faint)')
+          ],
+          [
+            'result',
+            r.result
+              ? '<span class="badge badge-result">' + esc(r.result) + '</span>'
+              : span('?', 'color:var(--color-text-faint)')
+          ],
+          [
+            'note',
+            r.note
+              ? '<span style="font-size:var(--text-xs);color:var(--color-text-muted)">'
+                + esc(r.note) + '</span>'
+              : span('?', 'color:var(--color-text-faint)')
+          ]
+        ];
+
+        html += '<table class="debug-summary-table" aria-label="解析サマリー"><tbody>';
+        rows.forEach(function (row) {
+          html += '<tr><th scope="row">' + esc(row[0]) + '</th>'
+               + '<td>' + row[1] + '</td></tr>';
+        });
+        html += '</tbody></table>';
+
+        html += '<p class="debug-section-title">tokens(simple)</p>';
+        html += '<div class="debug-inline-view">' + esc(simpleTokens) + '</div>';
+
+        html += '<p class="debug-section-title">tokens (' + tokens.length + ')</p>';
+        if (tokens.length === 0) {
+          html += '<p style="font-size:var(--text-xs);color:var(--color-text-faint);margin-bottom:var(--space-4)">なし</p>';
+        } else {
+          html += '<div class="tokens-list">';
+          tokens.forEach(function (t) {
+            html += '<div class="token-chip">'
+                 + '<span class="chip-type">' + esc(t.kind || t.type || '?') + '</span>'
+                 + '<span class="chip-raw">' + esc(t.raw || '?') + '</span>'
+                 + '<span class="chip-mora">' + esc(t.mora || '?') + '</span>'
+                 + '</div>';
+          });
+          html += '</div>';
+        }
+
+        html += '<p class="debug-section-title">moras(simple)</p>';
+        html += '<div class="debug-inline-view">' + esc(simpleMoras) + '</div>';
+
+        html += '<p class="debug-section-title">moras (' + moras.length + ')</p>';
+        if (moras.length === 0) {
+          html += '<p style="font-size:var(--text-xs);color:var(--color-text-faint);margin-bottom:var(--space-4)">なし</p>';
+        } else {
+          html += '<div class="moras-flow">';
+          moras.forEach(function (m, i) {
+            html += '<span class="mora-pill">' + esc(String(m.raw || m)) + '</span>';
+            if (i < moras.length - 1) {
+              html += '<span class="mora-sep">・</span>';
+            }
+          });
+          html += '</div>';
+        }
+
+        html += '<details class="debug-details">'
+             + '<summary>生 JSON を表示</summary>'
+             + '<pre class="debug-json-pre">'
+             + esc(JSON.stringify(r, null, 2))
+             + '</pre>'
+             + '</details>';
+
+        debugPanel.innerHTML = html;
+      }
+
+      function formatSimpleTokens(tokens) {
+        if (!Array.isArray(tokens) || tokens.length === 0) {
+          return '?';
+        }
+        return tokens
+          .map(function (t) {
+            return (t.kind || t.type || '?') + ':' + (t.raw || '?');
+          })
+          .join(' | ');
+      }
+
+      function formatSimpleMoras(moras) {
+        if (!Array.isArray(moras) || moras.length === 0) {
+          return '?';
+        }
+        return moras
+          .map(function (m) {
+            return (m.kind || m.type || '?') + ':' + (m.raw || '?');
+          })
+          .join(' | ');
+      }
+
+      function esc(s) {
+        return String(s)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+
+      function mono(s) {
+        return '<span style="font-family:var(--font-mono)">' + s + '</span>';
+      }
+
+      function span(s, style) {
+        return '<span style="' + style + '">' + s + '</span>';
+      }
+
+      function badge(text, cls) {
+        return '<span class="badge ' + cls + '">' + esc(text) + '</span>';
+      }
+
+      function showError(el, msg) {
+        el.classList.add('empty');
+        el.textContent = msg;
+      }
+    })();
+  </script>
+</body>
+</html>

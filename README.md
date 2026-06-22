@@ -1,49 +1,58 @@
 # ro-ma-makes-mora
 
-Roman letters that let you *see* Japanese rhythm.
+日本語のリズムが*見える*ローマ字文字。
 
-This is an experimental style of writing Japanese with the Roman alphabet.
-It uses capital letters to reveal the hidden beats inside Japanese words.
+日本語をローマ字で書く実験的なスタイルです。
+大文字を使用して、日本語の単語の中に隠されたビートを浮き彫りします。
 
-In Japanese, each kana unit can be felt as a small rhythmic beat, called a *mora*.
-It is close to the hand-clapped rhythm used to count beats in haiku or song lyrics.
-This project explores a way to make those normally invisible beats visible on the page when Japanese is written in romaji.
+日本語では、仮名単位は「モーラ」と呼ばれる
+小さなリズミカルなビートとして捉えます。
+俳句や歌の歌詞で拍子を数えるときに使われる手拍子のリズムに近い感じ。
+このプロジェクトでは、日本語がローマ字で書かれているときに、
+アルファベットに隠れて見えないビートをページ上に表示する方法を検討します。
 
-By marking each beat with a capital letter, this style makes it easier to tell at a glance whether a string of Latin letters is:
-    1. a word from a Western language, or
-    2. Japanese written in romanized form.
+このスタイルでは、各拍を大文字でマークすることにより、
+一連のラテン文字が次の内容であるかどうかを一目で簡単に区別できます。
+    1. 西洋語の単語、または
+    2. ローマ字表記の日本語。
 
-The goal is to help people who are curious about Japanese see its rhythm more clearly,
-and to give creators a more conscious, playful way to shape Japanese-looking text.
+目的は、日本語に興味のある人々にそのリズムをより明確に理解してもらうことです。
+そして、クリエイターが日本語に見えるテキストを形作る、
+より意識的で遊び心のある方法を提供します。
 
-**Important:** This is a stylistic layer, similar to calligraphy, handwriting, or decorative lettering, not a new official spelling system.
-The standard rules of romanization remain unchanged.
-Think of it as a visual treatment placed on top of normal romaji, used only to highlight mora rhythm.
+**重要:**
+　これは、書道、手書き、または装飾文字に似た文体レイヤーであり、
+新しい正式なスペル システムではありません。
+ローマ字表記の標準ルールは変わりません。
+これは、モーラリズムを強調するためにのみ使用される、
+通常のローマ字の上に置かれた視覚的な処理と考えてください。
 
-## Examples
+## 例
 
-Here are a few small examples.
-They are not strict rules, but glimpses of how mora rhythm can be made visible in Roman letters.
+以下に小さな例をいくつか示します。
+厳密なルールではありませんが、
+ローマ字でモーラリズムをどのように可視化できるかを垣間見ることができます。
 
-- Japanese word: neko (ね・こ, "cat")
-  - Normal romaji: `neko`
-  - Mora-marked style: `NeKo`
-  - The word breaks cleanly into two visible beats: ね｜こ
+- 日本語: 猫 (ね・こ、「猫」)
+  - 通常のローマ字: `neko`
+  - モラマークのスタイル: `NeKo`
+  - 単語が目に見える 2 つの拍にきれいに分かれています: ね｜こ
 
-- Japanese word: gakkō (が・っ・こ・う, "school")
-  - Normal romaji: `gakko` or `gakkou`
-  - Mora-marked style: `GakKoO`
-  - What looks like one compact word opens into four beats: が｜っ｜こ｜う
+- 日本語: 学校 (が・っ・こ・う、「学校」)
+  - 通常のローマ字：「gakko」または「gakkou」
+  - モーラマークのスタイル: `GakKoO`
+  - コンパクトな 1 つの単語のように見えるものは、4 拍で始まります: が｜っ｜こ｜う
 
-- Japanese word: kyō (きょ・う, "today")
-  - Normal romaji: `kyo` or `kyou`
-  - Mora-marked style: `KYoO`
-  - Even a short word can show an internal beat split: きょ｜う
+- 日本語: きょう (きょ・う、「今日」)
+  - 通常のローマ字: `kyo` または `kyo`
+  - モーラマークのスタイル: `KYoO`
+  - 短い単語でも内部のビート分割を示すことができます: きょ｜う
 
-- Japanese phrase: konbanwa (こんばんは, "good evening")
-  - Normal romaji: `konbanwa`
-  - Mora-marked style: `KonBanWa`
-  - Beneath the smooth surface, the phrase carries five beats: こ｜ん｜ば｜ん｜は
+- 日本語のフレーズ: こんばんは (こんばんは、「こんばんは」)
+  - 通常のローマ字: `konbanwa`
+  - モーラマークのスタイル: `KonBanWa`
+  - 滑らかな表面の下で、フレーズは 5 つのビートを運びます: こ｜ん｜ば｜ん｜は
 
-Read this style with your eyes as much as with your voice.
-The point is not to replace correct romaji, but to let the hidden rhythm of Japanese show through the shape of the letters on the page.
+このスタイルを、声だけでなく目でも読んでください。
+重要なのは、正しいローマ字を置き換えることではなく、
+日本語の隠されたリズムをページ上の文字の形を通して見せることです。

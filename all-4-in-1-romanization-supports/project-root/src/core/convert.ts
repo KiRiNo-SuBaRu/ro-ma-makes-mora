@@ -41,8 +41,15 @@ export async function getGlobalRepresentativeIndex(
  * 長大トークンに対する非適用ポリシーを適用する。
  *
  * JP_ROMAJI かつ APPLICABLE のトークンで、
- * 生文字列長が maxTokenLength を超える場合は
+ * 生文字列長が maxTokenLength 以上の場合は
  * NON_APPLICABLE として元の文字列を保持する。
+ *
+ * 課題4対応: 境界条件を `raw.length <= maxTokenLength` から
+ * `raw.length < maxTokenLength` へ修正した。
+ * これにより、長さが maxTokenLength と等しいトークンも
+ * 非適用となり、Web デモ側 core-2.js の
+ * `normalized.length >= settings.maxLength` 判定と
+ * 境界の扱いが一致する。
  *
  * @param token 解析済みトークン
  * @param maxTokenLength 長大トークン判定に用いる上限値
@@ -55,7 +62,7 @@ export function applyLongTokenPolicy(
   if (
     token.kind !== 'JP_ROMAJI' ||
     token.scope !== 'APPLICABLE' ||
-    token.raw.length <= maxTokenLength
+    token.raw.length < maxTokenLength
   ) {
     return token;
   }
@@ -66,7 +73,7 @@ export function applyLongTokenPolicy(
     output: token.raw,
     decision: {
       ...token.decision,
-      note: `length policy applied: raw length ${token.raw.length} > ${maxTokenLength}`,
+      note: `length policy applied: raw length ${token.raw.length} >= ${maxTokenLength}`,
     },
   };
 }
